@@ -1,0 +1,23 @@
+<?php
+
+use App\Http\Controllers\Api\EventController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "api" middleware group. Make something great!
+|
+*/
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+// Deliberately outside auth:sanctum — FEED-001 requires zero-auth, zero-permission access.
+Route::get('/events', [EventController::class, 'index']);
