@@ -21,3 +21,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Deliberately outside auth:sanctum — FEED-001 requires zero-auth, zero-permission access.
 Route::get('/events', [EventController::class, 'index']);
+// Deliberately outside auth:sanctum — the detail page is the public landing target for shared links (SHARE-003).
+Route::get('/events/{id}', [EventController::class, 'show']);

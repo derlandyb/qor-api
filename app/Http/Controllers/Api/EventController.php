@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\EventStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\EventDetailResource;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
 use Illuminate\Http\JsonResponse;
@@ -35,5 +37,23 @@ final class EventController extends Controller
                 ->all(),
             'next_cursor' => $events->nextCursor()?->encode(),
         ]);
+    }
+
+    public function show(string $id): EventDetailResource|JsonResponse
+    {
+        $event = Event::query()
+            ->with(['venue', 'promoters'])
+            ->whereKey($id)
+            // Published/Cancelled/persisted-Finished are all publicly resolvable (SHARE-003/005:
+            // an old shared link must still resolve). Draft/PendingApproval/Approved/ChangesRequested
+            // are internal-only and 404 here — they were never publicly published.
+            ->whereIn('status', [EventStatus::Published, EventStatus::Cancelled, EventStatus::Finished])
+            ->first();
+
+        if ($event === null) {
+            return response()->json(['message' => 'Evento não encontrado.'], 404);
+        }
+
+        return new EventDetailResource($event);
     }
 }
