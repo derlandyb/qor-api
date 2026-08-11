@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make format
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make lint
+  static-analysis:
+    name: static-analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make static-analysis
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make unit-tests
+  integration-tests:
+    name: integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make integration-tests
+  ui-e2e-tests:
+    name: ui-e2e-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make ui-e2e-tests
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make build
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make coverage
+  quality-gate:
+    name: quality-gate
+    if: always()
+    needs: [format, lint, static-analysis, unit-tests, integration-tests, ui-e2e-tests, build, coverage]
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.format.result }}" = success && test "${{ needs.lint.result }}" = success && test "${{ needs.static-analysis.result }}" = success && test "${{ needs.unit-tests.result }}" = success && test "${{ needs.integration-tests.result }}" = success && test "${{ needs.ui-e2e-tests.result }}" = success && test "${{ needs.build.result }}" = success && test "${{ needs.coverage.result }}" = success
