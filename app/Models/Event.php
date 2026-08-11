@@ -54,6 +54,43 @@ final class Event extends Model
             ->where('start_date_time', '>', now());
     }
 
+    /** SEARCH-001..004: case/accent-insensitive substring match, AND'd across whitespace-split terms. */
+    public function scopeSearch(Builder $query, string $q): Builder
+    {
+        $terms = array_filter(preg_split('/\s+/', trim($q)));
+
+        foreach ($terms as $term) {
+            $needle = '%'.$term.'%';
+            $query->where(function (Builder $sub) use ($needle) {
+                $sub->whereRaw('unaccent(title) ILIKE unaccent(?)', [$needle])
+                    ->orWhereHas('venue', fn (Builder $v) => $v->whereRaw('unaccent(name) ILIKE unaccent(?)', [$needle]))
+                    ->orWhereHas('artists', fn (Builder $a) => $a->whereRaw('unaccent(name) ILIKE unaccent(?)', [$needle]))
+                    ->orWhereRaw(
+                        'EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) g WHERE unaccent(g) ILIKE unaccent(?))',
+                        [$needle]
+                    );
+            });
+        }
+
+        return $query;
+    }
+
+    /** SEARCH-007: rank an exact (whole-field) match above partial matches, without changing what's included. */
+    public function scopeExactMatchFirst(Builder $query, string $q): Builder
+    {
+        return $query
+            ->selectRaw('events.*, (
+                unaccent(title) ILIKE unaccent(?)
+                OR EXISTS (SELECT 1 FROM venues v WHERE v.id = events.venue_id AND unaccent(v.name) ILIKE unaccent(?))
+                OR EXISTS (
+                    SELECT 1 FROM event_artist ea JOIN artists a ON a.id = ea.artist_id
+                    WHERE ea.event_id = events.id AND unaccent(a.name) ILIKE unaccent(?)
+                )
+                OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) g WHERE unaccent(g) ILIKE unaccent(?))
+            ) AS is_exact_match', [$q, $q, $q, $q])
+            ->orderByDesc('is_exact_match');
+    }
+
     protected static function booted(): void
     {
         // Denormalize city from venue at write time (avoids a join on every feed page).

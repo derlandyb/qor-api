@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\EventDetailResource;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,14 +20,33 @@ final class EventController extends Controller
         ]);
 
         $limit = $request->integer('limit', 20);
+        $q = trim((string) $request->query('q', ''));
 
-        $events = Event::query()
+        $query = Event::query()
             ->with(['venue', 'artists', 'promoters'])
-            ->publishedUpcoming()
-            ->orderBy('start_date_time')
-            ->orderBy('title')
-            ->orderBy('id')
-            ->cursorPaginate($limit);
+            ->publishedUpcoming();
+
+        if ($q !== '') {
+            $query->search($q)->exactMatchFirst($q);
+        }
+
+        $query->orderBy('start_date_time')->orderBy('title')->orderBy('id');
+
+        // Laravel's cursor paginator builds its keyset WHERE tuple from raw column names, but
+        // exactMatchFirst()'s `is_exact_match` is a SELECT-list expression alias, not a real
+        // table column — invalid in a Postgres WHERE clause, so cursorPaginate() 500s past page
+        // one whenever q is active. Search result sets are small relative to the full feed, so
+        // offset pagination's degradation risk doesn't apply here; the plain (q-less) feed keeps
+        // the proven cursor paginator.
+        return $q !== ''
+            ? $this->offsetPaginatedResponse($query, $request, $limit)
+            : $this->cursorPaginatedResponse($query, $request, $limit);
+    }
+
+    /** @param  Builder<Event>  $query */
+    private function cursorPaginatedResponse(Builder $query, Request $request, int $limit): JsonResponse
+    {
+        $events = $query->cursorPaginate($limit);
 
         // Built explicitly (rather than returning EventResource::collection($events) directly)
         // to match the documented { data, next_cursor } contract — Laravel's default paginated
@@ -36,6 +56,29 @@ final class EventController extends Controller
                 ->map(fn (Event $event) => (new EventResource($event))->resolve($request))
                 ->all(),
             'next_cursor' => $events->nextCursor()?->encode(),
+        ]);
+    }
+
+    /** @param  Builder<Event>  $query */
+    private function offsetPaginatedResponse(Builder $query, Request $request, int $limit): JsonResponse
+    {
+        $offset = 0;
+        $cursorParam = $request->query('cursor');
+
+        if (is_string($cursorParam) && $cursorParam !== '') {
+            $decoded = json_decode(base64_decode($cursorParam, true) ?: '', true);
+            if (is_array($decoded) && isset($decoded['offset'])) {
+                $offset = max(0, (int) $decoded['offset']);
+            }
+        }
+
+        $events = $query->offset($offset)->limit($limit + 1)->get();
+        $hasMore = $events->count() > $limit;
+        $items = $events->take($limit);
+
+        return response()->json([
+            'data' => $items->map(fn (Event $event) => (new EventResource($event))->resolve($request))->all(),
+            'next_cursor' => $hasMore ? base64_encode(json_encode(['offset' => $offset + $limit])) : null,
         ]);
     }
 
