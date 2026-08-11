@@ -59,3 +59,26 @@ test('given an event with optional fields unset when the feed loads then those f
         ->assertJsonMissingPath('data.0.price')
         ->assertJsonMissingPath('data.0.ageRating');
 });
+
+test('given an out-of-range or malformed limit when the feed loads then it returns a validation error', function (string $limit) {
+    $this->getJson('/api/events?limit='.$limit)
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('limit');
+})->with([
+    'zero' => '0',
+    'negative' => '-1',
+    'non-numeric' => 'abc',
+    'over the cap' => '51',
+]);
+
+test('given a valid custom limit when the feed loads then it respects the requested page size', function () {
+    $venue = Venue::factory()->create();
+    Event::factory()->for($venue)->count(3)->create([
+        'status' => EventStatus::Published,
+        'start_date_time' => now()->addDay(),
+    ]);
+
+    $this->getJson('/api/events?limit=1')
+        ->assertOk()
+        ->assertJsonCount(1, 'data');
+});

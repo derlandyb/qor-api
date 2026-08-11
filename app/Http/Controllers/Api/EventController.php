@@ -12,7 +12,11 @@ final class EventController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $limit = min((int) $request->integer('limit', 20), 50);
+        $request->validate([
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $limit = $request->integer('limit', 20);
 
         $events = Event::query()
             ->with(['venue', 'artists', 'promoters'])
