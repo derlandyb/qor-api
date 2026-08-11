@@ -14,48 +14,113 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make format
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make lint
   static-analysis:
     name: static-analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make static-analysis
   unit-tests:
     name: unit-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+          coverage: pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make unit-tests
   integration-tests:
     name: integration-tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.9-alpine
+        env:
+          POSTGRES_DB: qor
+          POSTGRES_USER: qor
+          POSTGRES_PASSWORD: qor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qor -d qor"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make integration-tests
   ui-e2e-tests:
     name: ui-e2e-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make ui-e2e-tests
   build:
     name: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
       - run: make build
   coverage:
     name: coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3.21'
+          tools: composer:2.8.10
+          extensions: pdo_pgsql, pgsql, bcmath, intl, zip, pcov
+          coverage: pcov
+      - run: composer install --no-interaction --prefer-dist
       - run: make coverage
   quality-gate:
     name: quality-gate
