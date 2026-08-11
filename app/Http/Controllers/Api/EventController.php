@@ -10,17 +10,24 @@ use App\Models\Event;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 final class EventController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'q' => ['sometimes', 'nullable', 'string'],
+            'date_bucket' => ['sometimes', Rule::in(['hoje', 'amanha', 'fim_de_semana', 'proxima_semana'])],
+            'city' => ['sometimes', Rule::in(['Vitória', 'Vila Velha', 'Serra', 'Cariacica'])],
+            'genres' => ['sometimes', 'array'],
+            'genres.*' => ['string'],
+            'artist_id' => ['sometimes', 'string'],
         ]);
 
         $limit = $request->integer('limit', 20);
-        $q = trim((string) $request->query('q', ''));
+        $q = trim((string) ($validated['q'] ?? ''));
 
         $query = Event::query()
             ->with(['venue', 'artists', 'promoters'])
@@ -28,6 +35,18 @@ final class EventController extends Controller
 
         if ($q !== '') {
             $query->search($q)->exactMatchFirst($q);
+        }
+        if (! empty($validated['date_bucket'])) {
+            $query->dateBucket($validated['date_bucket']);
+        }
+        if (! empty($validated['city'])) {
+            $query->where('city', $validated['city']);
+        }
+        if (! empty($validated['genres'])) {
+            $query->genres($validated['genres']);
+        }
+        if (! empty($validated['artist_id'])) {
+            $query->whereHas('artists', fn (Builder $a) => $a->where('artists.id', $validated['artist_id']));
         }
 
         $query->orderBy('start_date_time')->orderBy('title')->orderBy('id');
