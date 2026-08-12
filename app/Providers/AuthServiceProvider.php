@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Enums\VerificationStatus;
+use App\Models\Event;
 use App\Models\User;
+use App\Policies\EventPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -15,7 +17,7 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        //
+        Event::class => EventPolicy::class,
     ];
 
     /**
