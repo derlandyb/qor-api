@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\FilterOptionsController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\Publisher\EventController as PublisherEventController;
 use App\Http\Controllers\Api\VerificationApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +57,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/verification-applications', [VerificationReviewController::class, 'index']);
     Route::post('/admin/promoters/{promoter}/revoke', [VerificationRevocationController::class, 'revokePromoter']);
     Route::post('/admin/venues/{venue}/revoke', [VerificationRevocationController::class, 'revokeVenue']);
+});
+
+// PUBLISH-001..008 — publisher-facing write surface + status dashboard. `manage-events` is
+// verification's Gate, reused unmodified; EventPolicy::manage() layers per-row ownership on
+// top for show/update/cancel (route-model-bound, so a nonexistent id still 404s beforehand).
+Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('publisher')->group(function () {
+    Route::post('/events', [PublisherEventController::class, 'store']);
+    Route::get('/events', [PublisherEventController::class, 'index']);
+    Route::get('/events/{event}', [PublisherEventController::class, 'show']);
+    Route::patch('/events/{event}', [PublisherEventController::class, 'update']);
+    Route::post('/events/{event}/cancel', [PublisherEventController::class, 'cancel']);
 });
 
 Route::post('/auth/google', [GoogleAuthController::class, 'login']);

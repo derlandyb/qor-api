@@ -10,16 +10,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class Event extends Model
 {
     use HasFactory;
 
+    /** status values a first-time submission (never yet Published) can still be directly edited from. */
+    private const RESUBMITTABLE_STATUSES = [EventStatus::Draft, EventStatus::PendingApproval, EventStatus::ChangesRequested];
+
     protected $fillable = [
         'title', 'description', 'cover_image_url', 'start_date_time', 'end_date_time',
         'venue_id', 'city', 'price_min', 'price_max', 'is_free', 'currency',
-        'age_rating', 'genres', 'ticket_url', 'status',
+        'age_rating', 'genres', 'ticket_url', 'status', 'reviewer_feedback',
     ];
 
     protected $casts = [
@@ -46,6 +51,64 @@ final class Event extends Model
     public function promoters(): BelongsToMany
     {
         return $this->belongsToMany(Promoter::class, 'event_promoter');
+    }
+
+    /** At most one live row per event — enforced by event_revisions' unique event_id (PUBLISH-002 AC3). */
+    public function pendingRevision(): HasOne
+    {
+        return $this->hasOne(EventRevision::class);
+    }
+
+    /** PUBLISH-001: `status` becomes Draft if `$submit` is false, PendingApproval if true. */
+    public static function submitForApproval(array $fields, bool $submit): self
+    {
+        return self::query()->create([
+            ...$fields,
+            'status' => $submit ? EventStatus::PendingApproval : EventStatus::Draft,
+        ]);
+    }
+
+    /**
+     * For a first-time submission still in Draft/PendingApproval/ChangesRequested (never yet
+     * Published): updates the row's own fields directly and sets `status` per `$submit`,
+     * clearing `reviewer_feedback` — there is no live public version to protect yet.
+     */
+    public function resubmit(array $fields, bool $submit): void
+    {
+        abort_unless(in_array($this->status, self::RESUBMITTABLE_STATUSES, true), 409, 'Este evento não pode mais ser editado diretamente.');
+
+        $this->update([
+            ...$fields,
+            'status' => $submit ? EventStatus::PendingApproval : EventStatus::Draft,
+            'reviewer_feedback' => null,
+        ]);
+    }
+
+    /**
+     * For a Published event (PUBLISH-002/003): creates or replaces its EventRevision shadow
+     * record. Never mutates the live Event row's fields — the previously-approved version
+     * stays publicly visible until moderation applies the revision.
+     */
+    public function submitEdit(array $fields): void
+    {
+        abort_unless($this->status === EventStatus::Published, 409, 'Este evento não pode receber uma edição neste momento.');
+
+        EventRevision::submitFor($this, $fields);
+    }
+
+    /**
+     * PUBLISH-005/006/007: immediate effect, no approval step, and — the direct
+     * consequence of "immediate" — discards any in-flight edit in the same transaction,
+     * since there is nothing left for that edit to be approved onto.
+     */
+    public function cancel(): void
+    {
+        abort_if($this->status === EventStatus::Cancelled, 409, 'Este evento já está cancelado.');
+
+        DB::transaction(function () {
+            $this->update(['status' => EventStatus::Cancelled]);
+            $this->pendingRevision()->delete(); // PUBLISH-007 — no-op if none exists
+        });
     }
 
     /** The feed's core business rule: Published (or Cancelled-but-was-published) + future start. */
@@ -154,6 +217,22 @@ final class Event extends Model
     public function scopeStrictlyPublishedUpcoming(Builder $query): Builder
     {
         return $query->where('status', EventStatus::Published)->where('start_date_time', '>', now());
+    }
+
+    /** PUBLISH-004: the publisher dashboard's "my events" read scope — a Promoter's or Venue account's own rows. */
+    public function scopeOwnedBy(Builder $query, User $user): Builder
+    {
+        $promoterId = $user->promoterProfile?->id;
+        $venueId = $user->venueProfile?->id;
+
+        return $query->where(function (Builder $q) use ($promoterId, $venueId) {
+            if ($promoterId !== null) {
+                $q->orWhereHas('promoters', fn (Builder $p) => $p->whereKey($promoterId));
+            }
+            if ($venueId !== null) {
+                $q->orWhere('venue_id', $venueId);
+            }
+        });
     }
 
     protected static function booted(): void
