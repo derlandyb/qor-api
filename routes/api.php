@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\EventReviewController;
+use App\Http\Controllers\Api\Admin\ModerationQueueController;
 use App\Http\Controllers\Api\Admin\VerificationReviewController;
 use App\Http\Controllers\Api\Admin\VerificationRevocationController;
 use App\Http\Controllers\Api\AuthController;
@@ -48,15 +50,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/verification/status', [VerificationApplicationController::class, 'status']);
 });
 
-// VERIFY-001/005/006 — admin review/revocation. Deliberately auth:sanctum only, no role check yet:
-// the concrete `admin` role doesn't exist in this codebase until `moderation`, which retroactively
-// gates these exact routes — a known, designed sequencing gap, not an oversight.
-Route::middleware('auth:sanctum')->group(function () {
+// VERIFY-001/005/006 — admin review/revocation. Previously auth:sanctum only, no role check —
+// the concrete `admin` role didn't exist in this codebase until `moderation`, which retroactively
+// gates these exact routes with `can:admin` below, a known, designed sequencing gap now closed.
+Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
     Route::post('/admin/verification-applications/{application}/approve', [VerificationReviewController::class, 'approve']);
     Route::post('/admin/verification-applications/{application}/reject', [VerificationReviewController::class, 'reject']);
     Route::get('/admin/verification-applications', [VerificationReviewController::class, 'index']);
     Route::post('/admin/promoters/{promoter}/revoke', [VerificationRevocationController::class, 'revokePromoter']);
     Route::post('/admin/venues/{venue}/revoke', [VerificationRevocationController::class, 'revokeVenue']);
+});
+
+// ADMIN-001/002/004/005 — moderator-only queues plus the new Event approve/request-changes
+// actions event-publishing's design explicitly deferred to this feature.
+Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+    Route::get('/admin/moderation/verification-queue', [ModerationQueueController::class, 'verificationQueue']);
+    Route::get('/admin/moderation/event-queue', [ModerationQueueController::class, 'eventQueue']);
+    Route::get('/admin/moderation/verified-accounts', [ModerationQueueController::class, 'verifiedAccounts']);
+    Route::post('/admin/events/{event}/approve', [EventReviewController::class, 'approve']);
+    Route::post('/admin/events/{event}/request-changes', [EventReviewController::class, 'requestChanges']);
 });
 
 // PUBLISH-001..008 — publisher-facing write surface + status dashboard. `manage-events` is

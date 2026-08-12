@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use App\Enums\Role;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -48,6 +49,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'account_type' => AccountType::class,
+        'role' => Role::class,
     ];
 
     public function favoriteEvents(): BelongsToMany
@@ -68,5 +70,11 @@ class User extends Authenticatable
     public function verificationApplications(): HasMany
     {
         return $this->hasMany(VerificationApplication::class);
+    }
+
+    /** The first concrete definition of "is this account an admin" (moderation's `can:admin` gate). */
+    public function isAdmin(): bool
+    {
+        return $this->role === Role::Admin;
     }
 }

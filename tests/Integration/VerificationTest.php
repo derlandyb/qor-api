@@ -18,7 +18,7 @@ it('given revoked verification when published events exist then they remain publ
     // event_promoter pivot, which is what "completely untouched" is meant to prove.
     $venue = Venue::factory()->create(['user_id' => $venueUser->id, 'verification_status' => VerificationStatus::Verified]);
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Published]);
-    Sanctum::actingAs(User::factory()->create());
+    Sanctum::actingAs(User::factory()->admin()->create());
 
     $this->postJson("/api/admin/venues/{$venue->id}/revoke")->assertOk();
 
