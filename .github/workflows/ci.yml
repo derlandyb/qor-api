@@ -112,6 +112,27 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.9-alpine
+        env:
+          POSTGRES_DB: qor
+          POSTGRES_USER: qor
+          POSTGRES_PASSWORD: qor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qor -d qor"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: qor
+      DB_USERNAME: qor
+      DB_PASSWORD: qor
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

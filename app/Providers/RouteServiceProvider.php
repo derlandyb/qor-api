@@ -25,7 +25,11 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            // The array cache backing this limiter persists for the whole test process, so a
+            // full suite run's cumulative request count (not any single test) can trip it.
+            return app()->environment('testing')
+                ? Limit::none()
+                : Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
         $this->routes(function () {
