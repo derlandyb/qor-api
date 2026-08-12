@@ -121,6 +121,28 @@ it('given an already published event with no pending item when it is approved ag
     $this->postJson("/api/admin/events/{$event->id}/request-changes", ['feedback' => 'tarde demais'])->assertStatus(409);
 });
 
+it('given feedback over 2000 characters when requesting changes then it returns a field level error', function () {
+    $venue = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create(['status' => EventStatus::PendingApproval]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/events/{$event->id}/request-changes", ['feedback' => str_repeat('a', 2001)])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('feedback');
+});
+
+it('given feedback containing HTML tags when requesting changes then the tags are stripped before saving', function () {
+    $venue = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create(['status' => EventStatus::PendingApproval]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/events/{$event->id}/request-changes", [
+        'feedback' => '<script>alert(1)</script>Falta imagem de capa.',
+    ])->assertOk();
+
+    expect($event->fresh()->reviewer_feedback)->toBe('alert(1)Falta imagem de capa.');
+});
+
 it('given a non-admin account when the event queue or review actions are called then it is forbidden', function () {
     $venue = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::PendingApproval]);

@@ -161,3 +161,28 @@ it('given an event owned by another publisher when it is accessed then it is for
 test('given no Sanctum token when the publisher create endpoint is called then it returns unauthorized', function () {
     $this->postJson('/api/publisher/events', [])->assertUnauthorized();
 });
+
+it('given a description over 5000 characters when creating an event then it returns a field level error', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/publisher/events', validEventPayload(['description' => str_repeat('a', 5001)]))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['description']);
+});
+
+it('given a description containing HTML tags when creating an event then the tags are stripped before saving', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $venue = Venue::factory()->create();
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson('/api/publisher/events', validEventPayload([
+        'venueId' => $venue->id,
+        'description' => '<script>alert(1)</script>Uma noite de rock pesado.',
+    ]))->assertCreated();
+
+    $event = Event::query()->findOrFail($response->json('data.id'));
+    expect($event->description)->toBe('alert(1)Uma noite de rock pesado.');
+});
