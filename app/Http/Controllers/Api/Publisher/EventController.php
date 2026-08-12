@@ -130,7 +130,7 @@ final class EventController extends Controller
 
         return [
             'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
+            'description' => isset($validated['description']) ? strip_tags($validated['description']) : null,
             'cover_image_url' => $validated['coverImageUrl'] ?? null,
             'start_date_time' => $validated['startDateTime'] ?? null,
             'end_date_time' => $validated['endDateTime'] ?? null,
