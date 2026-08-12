@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\FilterOptionsController;
 use App\Http\Controllers\Api\MapController;
@@ -20,6 +21,12 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Anonymous — registration/login precede any session, mirroring GET /api/events.
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
 // Deliberately outside auth:sanctum — FEED-001 requires zero-auth, zero-permission access.
 Route::get('/events', [EventController::class, 'index']);
