@@ -139,6 +139,17 @@ final class Event extends Model
         return $query->whereRaw("genres ??| array[{$placeholders}]", $genres);
     }
 
+    /** MAP edge case: omit events whose venue has no coordinates, or coordinates outside valid ranges. */
+    public function scopeHasVenueCoordinates(Builder $query): Builder
+    {
+        return $query->whereHas('venue', function (Builder $v) {
+            $v->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->whereBetween('latitude', [-90, 90])
+                ->whereBetween('longitude', [-180, 180]);
+        });
+    }
+
     /** FILTER-003/004 AC1: option lists reflect strictly Published (not Cancelled) upcoming events. */
     public function scopeStrictlyPublishedUpcoming(Builder $query): Builder
     {
