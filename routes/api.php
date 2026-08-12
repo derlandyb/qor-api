@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\FilterOptionsController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\MapController;
+use App\Http\Controllers\Api\PasswordResetController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +23,20 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Anonymous — registration/login precede any session, mirroring GET /api/events.
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+
+Route::post('/auth/google', [GoogleAuthController::class, 'login']);
+Route::post('/password/forgot', [PasswordResetController::class, 'forgot']);
+// Named password.reset — Laravel's default ResetPassword notification builds its email link via
+// route('password.reset', ...), which throws RouteNotFoundException if the name isn't registered.
+// pt-BR copy/template customization is deferred (see PR description); this keeps the default
+// notification working as-is until that's addressed.
+Route::post('/password/reset', [PasswordResetController::class, 'reset'])->name('password.reset');
 
 // Deliberately outside auth:sanctum — FEED-001 requires zero-auth, zero-permission access.
 Route::get('/events', [EventController::class, 'index']);
