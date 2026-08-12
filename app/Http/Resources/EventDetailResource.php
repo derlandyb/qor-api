@@ -42,6 +42,10 @@ final class EventDetailResource extends JsonResource
                 $this->relationLoaded('promoters') && $this->promoters->isNotEmpty(),
                 fn () => new PromoterResource($this->promoters->first()),
             ),
+            'isFavorited' => $this->when(
+                $request->attributes->has('favoritedEventIds'),
+                fn () => $request->attributes->get('favoritedEventIds')->contains($this->id),
+            ),
         ];
     }
 }

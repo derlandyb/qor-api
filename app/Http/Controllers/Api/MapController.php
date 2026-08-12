@@ -22,6 +22,8 @@ final class MapController extends Controller
             'artist_id' => ['sometimes', 'string'],
         ]);
 
+        $this->attachFavoritedEventIds($request);
+
         $query = Event::query()
             ->with(['venue', 'artists', 'promoters'])
             ->publishedUpcoming()

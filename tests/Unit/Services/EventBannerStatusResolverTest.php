@@ -36,6 +36,19 @@ it('given a published event with a future date when the banner status is resolve
     expect(EventBannerStatusResolver::resolve($event))->toBeNull();
 });
 
+it('given a cancelled event with a future date when isFinished is checked directly then it returns false', function () {
+    $event = Event::factory()->for(Venue::factory())->make([
+        'status' => EventStatus::Cancelled,
+        'start_date_time' => now()->addDay(),
+        'end_date_time' => null,
+    ]);
+
+    // isFinished() intentionally ignores the Cancelled/Finished precedence rule that resolve()
+    // applies — it answers only "is this event's date/time in the past," the exact predicate
+    // favorites' Upcoming/Passados split needs (a future-dated cancelled event stays Upcoming).
+    expect(EventBannerStatusResolver::isFinished($event))->toBeFalse();
+});
+
 it('given a published event whose date has passed when the banner status is resolved then it derives finished from the clock', function () {
     $event = Event::factory()->for(Venue::factory())->make([
         'status' => EventStatus::Published,

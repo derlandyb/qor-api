@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\FilterOptionsController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\MapController;
@@ -29,6 +30,13 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+
+// FAVORITE-006/007 — the one part of this feature's surface that requires auth.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::put('/favorites/{event}', [FavoriteController::class, 'store']);
+    Route::delete('/favorites/{event}', [FavoriteController::class, 'destroy']);
+    Route::get('/favorites', [FavoriteController::class, 'index']);
+});
 
 Route::post('/auth/google', [GoogleAuthController::class, 'login']);
 Route::post('/password/forgot', [PasswordResetController::class, 'forgot']);
