@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\Role;
 use App\Enums\VerificationStatus;
 use App\Models\Event;
 use App\Models\User;
@@ -29,5 +30,9 @@ class AuthServiceProvider extends ServiceProvider
         // Only a Verified promoter/venue profile unlocks it — standard accounts, and anyone still
         // unverified/pending, are denied.
         Gate::define('manage-events', fn (User $user) => ($user->promoterProfile ?? $user->venueProfile)?->verification_status === VerificationStatus::Verified);
+
+        // moderation's retroactive definition of "admin" — gates verification's and this
+        // feature's own admin-only routes. A flat boolean role, no tiers (context.md, PRD §29 [OPEN]).
+        Gate::define('admin', fn (User $user) => $user->role === Role::Admin);
     }
 }

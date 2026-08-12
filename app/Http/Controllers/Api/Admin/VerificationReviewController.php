@@ -8,13 +8,20 @@ use App\Http\Resources\VerificationApplicationResource;
 use App\Models\VerificationApplication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class VerificationReviewController extends Controller
 {
+    /**
+     * moderation's concurrency-safety amendment (spec's Edge Case: two admins must not conflict
+     * on the same item). Row lock closes the race window; VerificationApplication::approve()'s
+     * own abort_unless() still produces the 409 on a non-pending application, unchanged.
+     */
     public function approve(VerificationApplication $application, Request $request): JsonResponse
     {
-        // The model's own abort_unless() produces the 409 on a non-pending application.
-        $application->approve($request->user());
+        DB::transaction(function () use ($application, $request) {
+            VerificationApplication::lockForUpdate()->findOrFail($application->id)->approve($request->user());
+        });
 
         return (new VerificationApplicationResource($application->fresh()))->response();
     }
@@ -23,7 +30,10 @@ final class VerificationReviewController extends Controller
     {
         $request->validate(['feedback' => ['required', 'string']]);
 
-        $application->reject($request->user(), $request->input('feedback'));
+        DB::transaction(function () use ($application, $request) {
+            VerificationApplication::lockForUpdate()->findOrFail($application->id)
+                ->reject($request->user(), $request->input('feedback'));
+        });
 
         return (new VerificationApplicationResource($application->fresh()))->response();
     }
