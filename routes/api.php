@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\EventReviewController;
 use App\Http\Controllers\Api\Admin\ModerationQueueController;
 use App\Http\Controllers\Api\Admin\VerificationReviewController;
 use App\Http\Controllers\Api\Admin\VerificationRevocationController;
+use App\Http\Controllers\Api\AnalyticsEventController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\FavoriteController;
@@ -102,3 +103,7 @@ Route::get('/events/{id}', [EventController::class, 'show']);
 // Deliberately outside auth:sanctum — filter picker options are anonymous, mirroring GET /api/events.
 Route::get('/filter-options/genres', [FilterOptionsController::class, 'genres']);
 Route::get('/filter-options/artists', [FilterOptionsController::class, 'artists']);
+
+// Deliberately outside auth:sanctum — an anonymous visitor's events (event_viewed, search_performed,
+// etc.) must still be recordable; optional Sanctum resolution attributes user_id when a token is present.
+Route::post('/analytics/events', [AnalyticsEventController::class, 'store']);
