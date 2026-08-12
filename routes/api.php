@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\FilterOptionsController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\VerificationApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/favorites/{event}', [FavoriteController::class, 'store']);
     Route::delete('/favorites/{event}', [FavoriteController::class, 'destroy']);
     Route::get('/favorites', [FavoriteController::class, 'index']);
+});
+
+// VERIFY-002/003/004/007 — applicant-facing submission/status, gated behind auth like favorites.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/verification/applications', [VerificationApplicationController::class, 'store']);
+    Route::get('/verification/status', [VerificationApplicationController::class, 'status']);
 });
 
 Route::post('/auth/google', [GoogleAuthController::class, 'login']);
