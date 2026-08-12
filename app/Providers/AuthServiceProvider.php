@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
-// use Illuminate\Support\Facades\Gate;
+use App\Enums\VerificationStatus;
+use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -21,6 +23,9 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // The reuse surface `event-publishing` applies as `can:manage-events` route middleware.
+        // Only a Verified promoter/venue profile unlocks it — standard accounts, and anyone still
+        // unverified/pending, are denied.
+        Gate::define('manage-events', fn (User $user) => ($user->promoterProfile ?? $user->venueProfile)?->verification_status === VerificationStatus::Verified);
     }
 }

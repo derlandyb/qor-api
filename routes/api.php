@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\VerificationReviewController;
+use App\Http\Controllers\Api\Admin\VerificationRevocationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\FavoriteController;
@@ -7,6 +9,7 @@ use App\Http\Controllers\Api\FilterOptionsController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\VerificationApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +39,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/favorites/{event}', [FavoriteController::class, 'store']);
     Route::delete('/favorites/{event}', [FavoriteController::class, 'destroy']);
     Route::get('/favorites', [FavoriteController::class, 'index']);
+});
+
+// VERIFY-002/003/004/007 — applicant-facing submission/status, gated behind auth like favorites.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/verification/applications', [VerificationApplicationController::class, 'store']);
+    Route::get('/verification/status', [VerificationApplicationController::class, 'status']);
+});
+
+// VERIFY-001/005/006 — admin review/revocation. Deliberately auth:sanctum only, no role check yet:
+// the concrete `admin` role doesn't exist in this codebase until `moderation`, which retroactively
+// gates these exact routes — a known, designed sequencing gap, not an oversight.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/admin/verification-applications/{application}/approve', [VerificationReviewController::class, 'approve']);
+    Route::post('/admin/verification-applications/{application}/reject', [VerificationReviewController::class, 'reject']);
+    Route::get('/admin/verification-applications', [VerificationReviewController::class, 'index']);
+    Route::post('/admin/promoters/{promoter}/revoke', [VerificationRevocationController::class, 'revokePromoter']);
+    Route::post('/admin/venues/{venue}/revoke', [VerificationRevocationController::class, 'revokeVenue']);
 });
 
 Route::post('/auth/google', [GoogleAuthController::class, 'login']);
