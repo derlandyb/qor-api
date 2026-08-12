@@ -99,6 +99,40 @@ test('given applications with different statuses when the admin index is filtere
     expect(collect($response->json('data'))->pluck('id')->all())->toBe([(string) $pending->id]);
 });
 
+it('given feedback over 2000 characters when an application is rejected then it returns a field level error', function () {
+    $applicant = User::factory()->create();
+    $promoter = Promoter::factory()->create(['user_id' => $applicant->id]);
+    $application = VerificationApplication::factory()->create([
+        'user_id' => $applicant->id,
+        'promoter_id' => $promoter->id,
+        'venue_id' => null,
+        'status' => VerificationApplicationStatus::PendingReview,
+    ]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/verification-applications/{$application->id}/reject", ['feedback' => str_repeat('a', 2001)])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('feedback');
+});
+
+it('given feedback containing HTML tags when an application is rejected then the tags are stripped before saving', function () {
+    $applicant = User::factory()->create();
+    $promoter = Promoter::factory()->create(['user_id' => $applicant->id]);
+    $application = VerificationApplication::factory()->create([
+        'user_id' => $applicant->id,
+        'promoter_id' => $promoter->id,
+        'venue_id' => null,
+        'status' => VerificationApplicationStatus::PendingReview,
+    ]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/verification-applications/{$application->id}/reject", [
+        'feedback' => '<script>alert(1)</script>Falta comprovante de endereço.',
+    ])->assertOk();
+
+    expect($application->fresh()->rejection_feedback)->toBe('alert(1)Falta comprovante de endereço.');
+});
+
 it('given a non-admin account when any moderation admin route is called then it is forbidden', function () {
     $applicant = User::factory()->create();
     $promoter = Promoter::factory()->create(['user_id' => $applicant->id]);

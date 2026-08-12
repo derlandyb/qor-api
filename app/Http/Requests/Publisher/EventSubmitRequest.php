@@ -37,7 +37,7 @@ final class EventSubmitRequest extends FormRequest
         return [
             'action' => ['required', 'string', 'in:draft,submit'],
             'title' => ['required', 'string', 'max:255'],
-            'description' => [$submit ? 'required' : 'nullable', 'string'],
+            'description' => [$submit ? 'required' : 'nullable', 'string', 'max:5000'],
             'coverImageUrl' => [$submit ? 'required' : 'nullable', 'string', 'max:255'],
             'startDateTime' => [$submit ? 'required' : 'nullable', 'date'],
             'endDateTime' => ['nullable', 'date', 'after:startDateTime'],

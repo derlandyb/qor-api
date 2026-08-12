@@ -54,7 +54,7 @@ final class EventReviewController extends Controller
      */
     public function requestChanges(Event $event, Request $request): JsonResponse
     {
-        $feedback = $request->validate(['feedback' => 'required|string|min:1'])['feedback'];
+        $feedback = strip_tags($request->validate(['feedback' => 'required|string|min:1|max:2000'])['feedback']);
 
         return DB::transaction(function () use ($event, $feedback) {
             $event = Event::lockForUpdate()->findOrFail($event->id);

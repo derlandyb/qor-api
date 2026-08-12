@@ -28,11 +28,11 @@ final class VerificationReviewController extends Controller
 
     public function reject(VerificationApplication $application, Request $request): JsonResponse
     {
-        $request->validate(['feedback' => ['required', 'string']]);
+        $feedback = strip_tags($request->validate(['feedback' => ['required', 'string', 'max:2000']])['feedback']);
 
-        DB::transaction(function () use ($application, $request) {
+        DB::transaction(function () use ($application, $request, $feedback) {
             VerificationApplication::lockForUpdate()->findOrFail($application->id)
-                ->reject($request->user(), $request->input('feedback'));
+                ->reject($request->user(), $feedback);
         });
 
         return (new VerificationApplicationResource($application->fresh()))->response();
