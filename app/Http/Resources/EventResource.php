@@ -32,6 +32,10 @@ final class EventResource extends JsonResource
             'genres' => $this->genres ?? [],
             'ticketUrl' => $this->ticket_url,
             'status' => $this->status->value,
+            'isFavorited' => $this->when(
+                $request->attributes->has('favoritedEventIds'),
+                fn () => $request->attributes->get('favoritedEventIds')->contains($this->id),
+            ),
         ];
     }
 }

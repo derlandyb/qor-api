@@ -28,6 +28,7 @@ final class EventController extends Controller
 
         $limit = $request->integer('limit', 20);
         $q = trim((string) ($validated['q'] ?? ''));
+        $this->attachFavoritedEventIds($request);
 
         $query = Event::query()
             ->with(['venue', 'artists', 'promoters'])
@@ -101,8 +102,10 @@ final class EventController extends Controller
         ]);
     }
 
-    public function show(string $id): EventDetailResource|JsonResponse
+    public function show(Request $request, string $id): EventDetailResource|JsonResponse
     {
+        $this->attachFavoritedEventIds($request);
+
         $event = Event::query()
             ->with(['venue', 'promoters'])
             ->whereKey($id)

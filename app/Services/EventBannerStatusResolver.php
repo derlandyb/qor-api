@@ -20,12 +20,18 @@ final class EventBannerStatusResolver
             return BannerStatus::Cancelled;
         }
 
-        $effectiveEnd = $event->end_date_time ?? $event->start_date_time;
+        return self::isFinished($event) ? BannerStatus::Finished : null;
+    }
 
-        if ($event->status === EventStatus::Finished || $effectiveEnd->isPast()) {
-            return BannerStatus::Finished;
+    /** Derived from the clock, not solely the persisted `finished` enum value — see resolve()'s docblock. */
+    public static function isFinished(Event $event): bool
+    {
+        if ($event->status === EventStatus::Finished) {
+            return true;
         }
 
-        return null;
+        $effectiveEnd = $event->end_date_time ?? $event->start_date_time;
+
+        return $effectiveEnd->isPast();
     }
 }
