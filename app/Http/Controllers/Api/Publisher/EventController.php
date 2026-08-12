@@ -9,13 +9,14 @@ use App\Http\Resources\Publisher\EventResource;
 use App\Http\Resources\Publisher\EventRevisionResource;
 use App\Models\Event;
 use App\Models\User;
+use App\Services\EventDashboardStatusResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * The publisher-facing create/edit write surface (PUBLISH-001..003/008). Every route sits
- * inside auth:sanctum + can:manage-events (verification's gate, reused unmodified);
- * EventPolicy::manage() layers per-row ownership on top for show/update.
+ * The full publisher-facing write surface plus the status-dashboard read (PUBLISH-001..008).
+ * Every route sits inside auth:sanctum + can:manage-events (verification's gate, reused unmodified);
+ * EventPolicy::manage() layers per-row ownership on top for show/update/cancel.
  */
 final class EventController extends Controller
 {
@@ -31,6 +32,28 @@ final class EventController extends Controller
         $this->syncOwnership($event, $user, $validated);
 
         return (new EventResource($event->fresh(['venue'])))->response()->setStatusCode(201);
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $items = Event::query()
+            ->ownedBy($user)
+            ->with(['venue', 'pendingRevision'])
+            ->get()
+            ->map(fn (Event $event) => [
+                'event' => new EventResource($event),
+                'dashboardStatus' => $this->dashboardStatusArray($event),
+            ]);
+
+        $statusFilter = $request->query('status');
+        if ($statusFilter !== null) {
+            $items = $items->filter(fn (array $item) => $item['dashboardStatus']['label'] === $statusFilter)->values();
+        }
+
+        return response()->json(['data' => $items]);
     }
 
     public function show(Request $request, Event $event): JsonResponse
@@ -62,6 +85,30 @@ final class EventController extends Controller
         }
 
         return (new EventResource($event->fresh(['venue'])))->response();
+    }
+
+    public function cancel(Request $request, Event $event): JsonResponse
+    {
+        $this->authorize('manage', $event);
+
+        $event->cancel();
+
+        return (new EventResource($event->fresh(['venue'])))->response();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dashboardStatusArray(Event $event): array
+    {
+        $view = EventDashboardStatusResolver::resolve($event);
+
+        return [
+            'label' => $view->label->value,
+            'reviewerFeedback' => $view->reviewerFeedback,
+            'hasPendingEdit' => $view->hasPendingEdit,
+            'pendingEditStatus' => $view->pendingEditStatus?->value,
+        ];
     }
 
     /**

@@ -59,13 +59,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/venues/{venue}/revoke', [VerificationRevocationController::class, 'revokeVenue']);
 });
 
-// PUBLISH-001/002/003/008 — publisher-facing create/edit write surface. `manage-events` is
+// PUBLISH-001..008 — publisher-facing write surface + status dashboard. `manage-events` is
 // verification's Gate, reused unmodified; EventPolicy::manage() layers per-row ownership on
-// top for show/update (route-model-bound, so a nonexistent id still 404s beforehand).
+// top for show/update/cancel (route-model-bound, so a nonexistent id still 404s beforehand).
 Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('publisher')->group(function () {
     Route::post('/events', [PublisherEventController::class, 'store']);
+    Route::get('/events', [PublisherEventController::class, 'index']);
     Route::get('/events/{event}', [PublisherEventController::class, 'show']);
     Route::patch('/events/{event}', [PublisherEventController::class, 'update']);
+    Route::post('/events/{event}/cancel', [PublisherEventController::class, 'cancel']);
 });
 
 Route::post('/auth/google', [GoogleAuthController::class, 'login']);

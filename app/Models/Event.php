@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class Event extends Model
@@ -93,6 +94,21 @@ final class Event extends Model
         abort_unless($this->status === EventStatus::Published, 409, 'Este evento não pode receber uma edição neste momento.');
 
         EventRevision::submitFor($this, $fields);
+    }
+
+    /**
+     * PUBLISH-005/006/007: immediate effect, no approval step, and — the direct
+     * consequence of "immediate" — discards any in-flight edit in the same transaction,
+     * since there is nothing left for that edit to be approved onto.
+     */
+    public function cancel(): void
+    {
+        abort_if($this->status === EventStatus::Cancelled, 409, 'Este evento já está cancelado.');
+
+        DB::transaction(function () {
+            $this->update(['status' => EventStatus::Cancelled]);
+            $this->pendingRevision()->delete(); // PUBLISH-007 — no-op if none exists
+        });
     }
 
     /** The feed's core business rule: Published (or Cancelled-but-was-published) + future start. */
@@ -201,6 +217,22 @@ final class Event extends Model
     public function scopeStrictlyPublishedUpcoming(Builder $query): Builder
     {
         return $query->where('status', EventStatus::Published)->where('start_date_time', '>', now());
+    }
+
+    /** PUBLISH-004: the publisher dashboard's "my events" read scope — a Promoter's or Venue account's own rows. */
+    public function scopeOwnedBy(Builder $query, User $user): Builder
+    {
+        $promoterId = $user->promoterProfile?->id;
+        $venueId = $user->venueProfile?->id;
+
+        return $query->where(function (Builder $q) use ($promoterId, $venueId) {
+            if ($promoterId !== null) {
+                $q->orWhereHas('promoters', fn (Builder $p) => $p->whereKey($promoterId));
+            }
+            if ($venueId !== null) {
+                $q->orWhere('venue_id', $venueId);
+            }
+        });
     }
 
     protected static function booted(): void
