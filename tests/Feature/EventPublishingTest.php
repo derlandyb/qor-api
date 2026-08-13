@@ -34,7 +34,7 @@ it('given a verified promoter when creating a complete event then a pending appr
     $venue = Venue::factory()->create();
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/publisher/events', validEventPayload(['venueId' => $venue->id]))
+    $response = $this->postJson('/api/admin/publisher/events', validEventPayload(['venueId' => $venue->id]))
         ->assertCreated()
         ->assertJsonPath('data.status', 'pending_approval');
 
@@ -49,7 +49,7 @@ it('given an unverified venue when creating an event then it is forbidden', func
     Venue::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Unverified]);
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/publisher/events', validEventPayload())
+    $this->postJson('/api/admin/publisher/events', validEventPayload())
         ->assertForbidden();
 
     expect(Event::query()->count())->toBe(0);
@@ -60,7 +60,7 @@ it('given a verified promoter when saving a draft with only a title then it succ
     Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/publisher/events', ['action' => 'draft', 'title' => 'Rascunho'])
+    $this->postJson('/api/admin/publisher/events', ['action' => 'draft', 'title' => 'Rascunho'])
         ->assertCreated()
         ->assertJsonPath('data.status', 'draft')
         ->assertJsonPath('data.title', 'Rascunho');
@@ -71,7 +71,7 @@ it('given a submit action missing required fields when creating an event then it
     Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/publisher/events', ['action' => 'submit', 'title' => 'Incompleto'])
+    $this->postJson('/api/admin/publisher/events', ['action' => 'submit', 'title' => 'Incompleto'])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['description', 'coverImageUrl', 'startDateTime', 'venueId']);
 });
@@ -82,7 +82,7 @@ it('given a venue account when creating an event with a different venueId then t
     $otherVenue = Venue::factory()->create();
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/publisher/events', validEventPayload(['venueId' => $otherVenue->id]))
+    $response = $this->postJson('/api/admin/publisher/events', validEventPayload(['venueId' => $otherVenue->id]))
         ->assertCreated();
 
     $event = Event::query()->findOrFail($response->json('data.id'));
@@ -96,7 +96,7 @@ it('given a published event with a pending edit when the edit form data is fetch
     $revision = EventRevision::factory()->for($event)->create(['title' => 'Novo Título']);
     Sanctum::actingAs($user);
 
-    $this->getJson("/api/publisher/events/{$event->id}")
+    $this->getJson("/api/admin/publisher/events/{$event->id}")
         ->assertOk()
         ->assertJsonPath('event.title', $event->title)
         ->assertJsonPath('pendingRevision.title', 'Novo Título')
@@ -109,7 +109,7 @@ it('given a published event when an edit is submitted then a revision is created
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Published, 'title' => 'Título Original']);
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/publisher/events/{$event->id}", validEventPayload(['title' => 'Título Editado', 'venueId' => $venue->id]))
+    $this->patchJson("/api/admin/publisher/events/{$event->id}", validEventPayload(['title' => 'Título Editado', 'venueId' => $venue->id]))
         ->assertOk()
         // The live Event row's own fields are byte-for-byte unchanged (PUBLISH-002/003's core guarantee).
         ->assertJsonPath('data.title', 'Título Original')
@@ -127,7 +127,7 @@ it('given a draft event when it is edited directly then its own fields are updat
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Draft, 'title' => 'Rascunho Original']);
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/publisher/events/{$event->id}", validEventPayload(['action' => 'draft', 'title' => 'Rascunho Editado', 'venueId' => $venue->id]))
+    $this->patchJson("/api/admin/publisher/events/{$event->id}", validEventPayload(['action' => 'draft', 'title' => 'Rascunho Editado', 'venueId' => $venue->id]))
         ->assertOk()
         ->assertJsonPath('data.title', 'Rascunho Editado')
         ->assertJsonPath('data.status', 'draft');
@@ -143,7 +143,7 @@ it('given a cancelled event when an edit is submitted then it conflicts', functi
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Cancelled]);
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/publisher/events/{$event->id}", validEventPayload(['venueId' => $venue->id]))
+    $this->patchJson("/api/admin/publisher/events/{$event->id}", validEventPayload(['venueId' => $venue->id]))
         ->assertStatus(409);
 });
 
@@ -155,11 +155,11 @@ it('given an event owned by another publisher when it is accessed then it is for
     Venue::factory()->create(['user_id' => $intruder->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($intruder);
 
-    $this->getJson("/api/publisher/events/{$event->id}")->assertForbidden();
+    $this->getJson("/api/admin/publisher/events/{$event->id}")->assertForbidden();
 });
 
 test('given no Sanctum token when the publisher create endpoint is called then it returns unauthorized', function () {
-    $this->postJson('/api/publisher/events', [])->assertUnauthorized();
+    $this->postJson('/api/admin/publisher/events', [])->assertUnauthorized();
 });
 
 it('given a description over 5000 characters when creating an event then it returns a field level error', function () {
@@ -167,7 +167,7 @@ it('given a description over 5000 characters when creating an event then it retu
     Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/publisher/events', validEventPayload(['description' => str_repeat('a', 5001)]))
+    $this->postJson('/api/admin/publisher/events', validEventPayload(['description' => str_repeat('a', 5001)]))
         ->assertStatus(422)
         ->assertJsonValidationErrors(['description']);
 });
@@ -178,7 +178,7 @@ it('given a description containing HTML tags when creating an event then the tag
     $venue = Venue::factory()->create();
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/publisher/events', validEventPayload([
+    $response = $this->postJson('/api/admin/publisher/events', validEventPayload([
         'venueId' => $venue->id,
         'description' => '<script>alert(1)</script>Uma noite de rock pesado.',
     ]))->assertCreated();

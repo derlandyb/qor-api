@@ -102,7 +102,7 @@ Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
 // PUBLISH-001..008 — publisher-facing write surface + status dashboard. `manage-events` is
 // verification's Gate, reused unmodified; EventPolicy::manage() layers per-row ownership on
 // top for show/update/cancel (route-model-bound, so a nonexistent id still 404s beforehand).
-Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('publisher')->group(function () {
+Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('admin/publisher')->group(function () {
     Route::post('/events', [PublisherEventController::class, 'store']);
     Route::get('/events', [PublisherEventController::class, 'index']);
     Route::get('/events/{event}', [PublisherEventController::class, 'show']);

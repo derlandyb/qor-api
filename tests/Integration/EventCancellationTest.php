@@ -23,11 +23,11 @@ it('given an unverified or pending review promoter or venue when every publisher
     }
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/publisher/events', ['action' => 'draft', 'title' => 'x'])->assertForbidden();
-    $this->getJson('/api/publisher/events')->assertForbidden();
-    $this->getJson("/api/publisher/events/{$event->id}")->assertForbidden();
-    $this->patchJson("/api/publisher/events/{$event->id}", ['action' => 'draft', 'title' => 'x'])->assertForbidden();
-    $this->postJson("/api/publisher/events/{$event->id}/cancel")->assertForbidden();
+    $this->postJson('/api/admin/publisher/events', ['action' => 'draft', 'title' => 'x'])->assertForbidden();
+    $this->getJson('/api/admin/publisher/events')->assertForbidden();
+    $this->getJson("/api/admin/publisher/events/{$event->id}")->assertForbidden();
+    $this->patchJson("/api/admin/publisher/events/{$event->id}", ['action' => 'draft', 'title' => 'x'])->assertForbidden();
+    $this->postJson("/api/admin/publisher/events/{$event->id}/cancel")->assertForbidden();
 
     // No row written by any of the above — the gate denies before any controller code runs.
     expect(Event::query()->count())->toBe(1) // only the pre-seeded one

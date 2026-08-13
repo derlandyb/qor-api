@@ -12,7 +12,7 @@ it('given a venue account when listing venue options then only its own venue is 
     Venue::factory()->create(['verification_status' => VerificationStatus::Verified]); // another verified venue, not owned
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/venues')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/venues')->assertOk();
 
     expect($response->json('accountType'))->toBe('venue')
         ->and($response->json('data'))->toHaveCount(1)
@@ -25,7 +25,7 @@ it('given a promoter account when listing venue options then all verified venues
     Venue::factory()->count(3)->create(['verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/venues')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/venues')->assertOk();
 
     expect($response->json('accountType'))->toBe('promoter')
         ->and($response->json('data'))->toHaveCount(3);
@@ -39,7 +39,7 @@ it('given a promoter account when an unverified venue exists then it is excluded
     Venue::factory()->create(['verification_status' => VerificationStatus::PendingReview]);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/venues')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/venues')->assertOk();
 
     expect($response->json('data'))->toHaveCount(1);
 });
@@ -49,7 +49,7 @@ it('given an unverified promoter account when listing venue options then it is f
     Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Unverified]);
     Sanctum::actingAs($user);
 
-    $this->getJson('/api/publisher/venues')->assertForbidden();
+    $this->getJson('/api/admin/publisher/venues')->assertForbidden();
 });
 
 it('given a promoter account when no verified venues exist then an empty list is returned', function () {
@@ -57,7 +57,7 @@ it('given a promoter account when no verified venues exist then an empty list is
     Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/venues')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/venues')->assertOk();
 
     expect($response->json('data'))->toBe([]);
 });
@@ -69,11 +69,11 @@ it('given a promoter account when listing venue options then results are ordered
     Venue::factory()->create(['name' => 'Alpha Casa de Shows', 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/venues')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/venues')->assertOk();
 
     expect($response->json('data.*.name'))->toBe(['Alpha Casa de Shows', 'Zeta Casa de Shows']);
 });
 
 test('given no Sanctum token when the venue options endpoint is called then it returns unauthorized', function () {
-    $this->getJson('/api/publisher/venues')->assertUnauthorized();
+    $this->getJson('/api/admin/publisher/venues')->assertUnauthorized();
 });
