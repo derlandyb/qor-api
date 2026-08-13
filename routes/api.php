@@ -39,6 +39,15 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
+// admin-auth (ADMIN-AUTH-002) — pure route aliases onto the same AuthController/
+// PasswordResetController methods above; every route qor-admin calls must live under
+// /api/admin/*, per ARCHITECTURE.md's "/api/admin/* vs consumer /api/*" boundary convention.
+Route::post('/admin/register', [AuthController::class, 'register']);
+Route::post('/admin/login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->post('/admin/logout', [AuthController::class, 'logout']);
+Route::post('/admin/password/forgot', [PasswordResetController::class, 'forgot']);
+Route::post('/admin/password/reset', [PasswordResetController::class, 'reset']);
+
 // FAVORITE-006/007 — the one part of this feature's surface that requires auth.
 Route::middleware('auth:sanctum')->group(function () {
     Route::put('/favorites/{event}', [FavoriteController::class, 'store']);
