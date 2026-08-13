@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\Publisher\EventController as PublisherEventController;
+use App\Http\Controllers\Api\Publisher\VenueOptionController;
 use App\Http\Controllers\Api\VerificationApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,7 @@ Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('publisher')->g
     Route::get('/events/{event}', [PublisherEventController::class, 'show']);
     Route::patch('/events/{event}', [PublisherEventController::class, 'update']);
     Route::post('/events/{event}/cancel', [PublisherEventController::class, 'cancel']);
+    Route::get('/venues', [VenueOptionController::class, 'index']);
 });
 
 Route::post('/auth/google', [GoogleAuthController::class, 'login']);
