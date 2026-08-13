@@ -16,6 +16,7 @@ final class Venue extends Model
         'name', 'image_url', 'description', 'address', 'city',
         'latitude', 'longitude', 'contact_phone', 'contact_email',
         'social_links', 'verification_status', 'user_id',
+        'revocation_reason',
     ];
 
     protected $casts = [

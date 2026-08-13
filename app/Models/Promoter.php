@@ -16,6 +16,7 @@ final class Promoter extends Model
     protected $fillable = [
         'name', 'image_url', 'description', 'social_links',
         'contact_phone', 'contact_email', 'verification_status', 'user_id',
+        'revocation_reason',
     ];
 
     protected $casts = [
