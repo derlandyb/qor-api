@@ -51,4 +51,12 @@ class UserFactory extends Factory
             'role' => Role::Admin,
         ]);
     }
+
+    /** admin-auth's higher tier — seeded/staff-created accounts only, never self-service. */
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => Role::SuperAdmin,
+        ]);
+    }
 }

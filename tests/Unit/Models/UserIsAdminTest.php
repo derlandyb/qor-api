@@ -27,3 +27,23 @@ it('given the admin gate when evaluated for both role values then it matches isA
     expect(Gate::forUser($admin)->allows('admin'))->toBeTrue()
         ->and(Gate::forUser($standard)->allows('admin'))->toBeFalse();
 });
+
+it('given all three roles then isAdmin is true only for admin and super_admin', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->admin()->create();
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    expect($user->isAdmin())->toBeFalse()
+        ->and($admin->isAdmin())->toBeTrue()
+        ->and($superAdmin->isAdmin())->toBeTrue();
+});
+
+it('given the super-admin gate when evaluated for all three roles then it matches only super_admin', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->admin()->create();
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    expect(Gate::forUser($user)->allows('super-admin'))->toBeFalse()
+        ->and(Gate::forUser($admin)->allows('super-admin'))->toBeFalse()
+        ->and(Gate::forUser($superAdmin)->allows('super-admin'))->toBeTrue();
+});
