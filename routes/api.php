@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\EventReviewController;
 use App\Http\Controllers\Api\Admin\ModerationQueueController;
+use App\Http\Controllers\Api\Admin\PasswordChangeController;
 use App\Http\Controllers\Api\Admin\VerificationReviewController;
 use App\Http\Controllers\Api\Admin\VerificationRevocationController;
 use App\Http\Controllers\Api\AnalyticsEventController;
@@ -47,6 +48,10 @@ Route::post('/admin/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/admin/logout', [AuthController::class, 'logout']);
 Route::post('/admin/password/forgot', [PasswordResetController::class, 'forgot']);
 Route::post('/admin/password/reset', [PasswordResetController::class, 'reset']);
+
+// ADMIN-AUTH-003 — any authenticated role; the one route that works regardless of
+// must_change_password, since it's how the flag itself gets cleared.
+Route::middleware('auth:sanctum')->post('/admin/change-password', [PasswordChangeController::class, 'store']);
 
 // FAVORITE-006/007 — the one part of this feature's surface that requires auth.
 Route::middleware('auth:sanctum')->group(function () {
