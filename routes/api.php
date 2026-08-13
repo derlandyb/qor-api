@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\EventReviewController;
 use App\Http\Controllers\Api\Admin\ModerationQueueController;
 use App\Http\Controllers\Api\Admin\PasswordChangeController;
+use App\Http\Controllers\Api\Admin\StaffController;
 use App\Http\Controllers\Api\Admin\VerificationReviewController;
 use App\Http\Controllers\Api\Admin\VerificationRevocationController;
 use App\Http\Controllers\Api\AnalyticsEventController;
@@ -52,6 +53,12 @@ Route::post('/admin/password/reset', [PasswordResetController::class, 'reset']);
 // ADMIN-AUTH-003 — any authenticated role; the one route that works regardless of
 // must_change_password, since it's how the flag itself gets cleared.
 Route::middleware('auth:sanctum')->post('/admin/change-password', [PasswordChangeController::class, 'store']);
+
+// ADMIN-AUTH-004 — Super-Admin-exclusive staff-account management, no self-service path.
+Route::middleware(['auth:sanctum', 'can:super-admin'])->group(function () {
+    Route::post('/admin/staff', [StaffController::class, 'store']);
+    Route::get('/admin/staff', [StaffController::class, 'index']);
+});
 
 // FAVORITE-006/007 — the one part of this feature's surface that requires auth.
 Route::middleware('auth:sanctum')->group(function () {
