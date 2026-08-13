@@ -73,13 +73,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/verification/status', [VerificationApplicationController::class, 'status']);
 });
 
-// VERIFY-001/005/006 — admin review/revocation. Previously auth:sanctum only, no role check —
-// the concrete `admin` role didn't exist in this codebase until `moderation`, which retroactively
-// gates these exact routes with `can:admin` below, a known, designed sequencing gap now closed.
+// VERIFY-001/006 — admin review. Previously auth:sanctum only, no role check — the concrete
+// `admin` role didn't exist in this codebase until `moderation`, which retroactively gates
+// these exact routes with `can:admin` below, a known, designed sequencing gap now closed.
 Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
     Route::post('/admin/verification-applications/{application}/approve', [VerificationReviewController::class, 'approve']);
     Route::post('/admin/verification-applications/{application}/reject', [VerificationReviewController::class, 'reject']);
     Route::get('/admin/verification-applications', [VerificationReviewController::class, 'index']);
+});
+
+// admin-auth (ADMIN-AUTH-004, amends moderation's ADMIN-004): revocation — the one existing
+// action judged high-impact enough to restrict beyond flat `admin` — is Super-Admin-exclusive.
+Route::middleware(['auth:sanctum', 'can:super-admin'])->group(function () {
     Route::post('/admin/promoters/{promoter}/revoke', [VerificationRevocationController::class, 'revokePromoter']);
     Route::post('/admin/venues/{venue}/revoke', [VerificationRevocationController::class, 'revokeVenue']);
 });

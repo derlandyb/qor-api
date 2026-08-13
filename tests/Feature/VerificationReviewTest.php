@@ -89,6 +89,26 @@ it('given a pending application when it is approved then the promoter becomes ve
     expect($promoter->fresh()->verification_status)->toBe(VerificationStatus::Verified);
 });
 
+// admin-auth (ADMIN-AUTH-004) regression: review (approve/reject) stays open to any admin —
+// only revocation was narrowed to super-admin, confirmed unchanged here.
+it('given a regular admin when approving or rejecting a verification application then it still succeeds', function () {
+    $applicant = User::factory()->create();
+    $promoter = Promoter::factory()->create(['user_id' => $applicant->id, 'verification_status' => VerificationStatus::PendingReview]);
+    $application = VerificationApplication::factory()->create([
+        'user_id' => $applicant->id,
+        'promoter_id' => $promoter->id,
+        'venue_id' => null,
+        'status' => VerificationApplicationStatus::PendingReview,
+    ]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/verification-applications/{$application->id}/approve")
+        ->assertOk()
+        ->assertJsonPath('data.status', 'verified');
+
+    expect($promoter->fresh()->verification_status)->toBe(VerificationStatus::Verified);
+});
+
 test('given applications with different statuses when the admin index is filtered then only matching ones are returned', function () {
     $pending = VerificationApplication::factory()->create(['status' => VerificationApplicationStatus::PendingReview]);
     VerificationApplication::factory()->create(['status' => VerificationApplicationStatus::Verified]);
