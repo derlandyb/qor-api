@@ -20,16 +20,31 @@ it('given revoked verification when published events exist then they remain publ
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Published]);
     Sanctum::actingAs(User::factory()->admin()->create());
 
-    $this->postJson("/api/admin/venues/{$venue->id}/revoke")->assertOk();
+    $this->postJson("/api/admin/venues/{$venue->id}/revoke", ['reason' => 'Documentação vencida.'])->assertOk();
 
     $venueRow = DB::table('venues')->where('id', $venue->id)->first();
-    expect($venueRow->verification_status)->toBe('unverified');
+    expect($venueRow->verification_status)->toBe('unverified')
+        ->and($venueRow->revocation_reason)->toBe('Documentação vencida.');
 
     $eventRow = DB::table('events')->where('id', $event->id)->first();
     expect($eventRow->venue_id)->toBe($venue->id)
         ->and($eventRow->status)->toBe('published');
 
     expect(Gate::forUser($venueUser->fresh())->denies('manage-events'))->toBeTrue();
+});
+
+it('given a blank revocation reason when a venue is revoked then it returns a field level error and nothing changes', function () {
+    $venueUser = User::factory()->create();
+    $venue = Venue::factory()->create(['user_id' => $venueUser->id, 'verification_status' => VerificationStatus::Verified]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/venues/{$venue->id}/revoke")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('reason');
+
+    $venueRow = DB::table('venues')->where('id', $venue->id)->first();
+    expect($venueRow->verification_status)->toBe('verified')
+        ->and($venueRow->revocation_reason)->toBeNull();
 });
 
 it('given a user with an existing promoter profile when a second promoter claims the same user_id then the database rejects it', function () {
