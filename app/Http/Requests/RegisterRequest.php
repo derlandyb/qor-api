@@ -20,7 +20,17 @@ final class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            'password' => ['required', 'confirmed', self::passwordStrengthRule()],
         ];
+    }
+
+    /**
+     * The single source of truth for "what counts as a strong enough password" — reused by
+     * admin-auth's PasswordChangeController and staff temp-password generation rather than
+     * being reimplemented.
+     */
+    public static function passwordStrengthRule(): Password
+    {
+        return Password::min(8)->letters()->numbers();
     }
 }

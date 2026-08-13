@@ -28,6 +28,8 @@ class User extends Authenticatable
         'password',
         'google_id',
         'account_type',
+        'role',
+        'must_change_password',
     ];
 
     /**
@@ -50,6 +52,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'account_type' => AccountType::class,
         'role' => Role::class,
+        'must_change_password' => 'boolean',
     ];
 
     public function favoriteEvents(): BelongsToMany
@@ -75,6 +78,6 @@ class User extends Authenticatable
     /** The first concrete definition of "is this account an admin" (moderation's `can:admin` gate). */
     public function isAdmin(): bool
     {
-        return $this->role === Role::Admin;
+        return in_array($this->role, [Role::Admin, Role::SuperAdmin], true);
     }
 }

@@ -14,7 +14,7 @@ it('given a publisher when cancelling an approved event then it is immediately c
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Published, 'start_date_time' => now()->addWeek()]);
     Sanctum::actingAs($user);
 
-    $this->postJson("/api/publisher/events/{$event->id}/cancel")
+    $this->postJson("/api/admin/publisher/events/{$event->id}/cancel")
         ->assertOk()
         ->assertJsonPath('data.status', 'cancelled');
 
@@ -39,7 +39,7 @@ it('given an already cancelled event when it is cancelled again then it conflict
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Cancelled]);
     Sanctum::actingAs($user);
 
-    $this->postJson("/api/publisher/events/{$event->id}/cancel")->assertStatus(409);
+    $this->postJson("/api/admin/publisher/events/{$event->id}/cancel")->assertStatus(409);
 });
 
 it('given a published event with a pending edit when it is cancelled then the edit is discarded atomically', function () {
@@ -49,14 +49,14 @@ it('given a published event with a pending edit when it is cancelled then the ed
     EventRevision::factory()->for($event)->create();
     Sanctum::actingAs($user);
 
-    $this->postJson("/api/publisher/events/{$event->id}/cancel")
+    $this->postJson("/api/admin/publisher/events/{$event->id}/cancel")
         ->assertOk()
         ->assertJsonPath('data.status', 'cancelled');
 
     expect($event->fresh()->status)->toBe(EventStatus::Cancelled)
         ->and(EventRevision::query()->where('event_id', $event->id)->count())->toBe(0);
 
-    $dashboard = $this->getJson('/api/publisher/events')->assertOk();
+    $dashboard = $this->getJson('/api/admin/publisher/events')->assertOk();
     expect($dashboard->json('data.0.dashboardStatus.hasPendingEdit'))->toBeFalse();
 });
 
@@ -68,7 +68,7 @@ it('given an event owned by another publisher when it is cancelled then it is fo
     Venue::factory()->create(['user_id' => $intruder->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($intruder);
 
-    $this->postJson("/api/publisher/events/{$event->id}/cancel")->assertForbidden();
+    $this->postJson("/api/admin/publisher/events/{$event->id}/cancel")->assertForbidden();
 
     expect($event->fresh()->status)->toBe(EventStatus::Published);
 });

@@ -31,8 +31,12 @@ class AuthServiceProvider extends ServiceProvider
         // unverified/pending, are denied.
         Gate::define('manage-events', fn (User $user) => ($user->promoterProfile ?? $user->venueProfile)?->verification_status === VerificationStatus::Verified);
 
-        // moderation's retroactive definition of "admin" — gates verification's and this
-        // feature's own admin-only routes. A flat boolean role, no tiers (context.md, PRD §29 [OPEN]).
-        Gate::define('admin', fn (User $user) => $user->role === Role::Admin);
+        // moderation's retroactive definition of "admin" — gates verification's admin-only
+        // routes. Deepened by admin-auth into two tiers: Admin and SuperAdmin both count here.
+        Gate::define('admin', fn (User $user) => $user->isAdmin());
+
+        // admin-auth: the higher tier — staff-account management and verification revocation,
+        // the one existing action judged high-impact enough to restrict beyond flat `admin`.
+        Gate::define('super-admin', fn (User $user) => $user->role === Role::SuperAdmin);
     }
 }

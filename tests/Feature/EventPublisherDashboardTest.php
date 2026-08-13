@@ -15,7 +15,7 @@ it('given a promoter with mixed status events when the dashboard is listed then 
     $notMine = Event::factory()->create(['status' => EventStatus::Draft]);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/events')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/events')->assertOk();
 
     $ids = collect($response->json('data'))->pluck('event.id')->all();
     expect($ids)->toBe([(string) $mine->id])
@@ -31,12 +31,12 @@ it('given a status query param when the dashboard is listed then only matching r
     $pending->promoters()->attach($promoter);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/publisher/events?status=draft')->assertOk();
+    $response = $this->getJson('/api/admin/publisher/events?status=draft')->assertOk();
 
     $ids = collect($response->json('data'))->pluck('event.id')->all();
     expect($ids)->toBe([(string) $draft->id]);
 });
 
 test('given no Sanctum token when the publisher dashboard endpoint is called then it returns unauthorized', function () {
-    $this->getJson('/api/publisher/events')->assertUnauthorized();
+    $this->getJson('/api/admin/publisher/events')->assertUnauthorized();
 });

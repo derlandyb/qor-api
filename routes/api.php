@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\Admin\EventReviewController;
 use App\Http\Controllers\Api\Admin\ModerationQueueController;
+use App\Http\Controllers\Api\Admin\PasswordChangeController;
+use App\Http\Controllers\Api\Admin\StaffController;
 use App\Http\Controllers\Api\Admin\VerificationReviewController;
 use App\Http\Controllers\Api\Admin\VerificationRevocationController;
 use App\Http\Controllers\Api\AnalyticsEventController;
@@ -39,6 +41,25 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
+// admin-auth (ADMIN-AUTH-002) — pure route aliases onto the same AuthController/
+// PasswordResetController methods above; every route qor-admin calls must live under
+// /api/admin/*, per ARCHITECTURE.md's "/api/admin/* vs consumer /api/*" boundary convention.
+Route::post('/admin/register', [AuthController::class, 'register']);
+Route::post('/admin/login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->post('/admin/logout', [AuthController::class, 'logout']);
+Route::post('/admin/password/forgot', [PasswordResetController::class, 'forgot']);
+Route::post('/admin/password/reset', [PasswordResetController::class, 'reset']);
+
+// ADMIN-AUTH-003 — any authenticated role; the one route that works regardless of
+// must_change_password, since it's how the flag itself gets cleared.
+Route::middleware('auth:sanctum')->post('/admin/change-password', [PasswordChangeController::class, 'store']);
+
+// ADMIN-AUTH-004 — Super-Admin-exclusive staff-account management, no self-service path.
+Route::middleware(['auth:sanctum', 'can:super-admin'])->group(function () {
+    Route::post('/admin/staff', [StaffController::class, 'store']);
+    Route::get('/admin/staff', [StaffController::class, 'index']);
+});
+
 // FAVORITE-006/007 — the one part of this feature's surface that requires auth.
 Route::middleware('auth:sanctum')->group(function () {
     Route::put('/favorites/{event}', [FavoriteController::class, 'store']);
@@ -52,13 +73,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/verification/status', [VerificationApplicationController::class, 'status']);
 });
 
-// VERIFY-001/005/006 — admin review/revocation. Previously auth:sanctum only, no role check —
-// the concrete `admin` role didn't exist in this codebase until `moderation`, which retroactively
-// gates these exact routes with `can:admin` below, a known, designed sequencing gap now closed.
+// VERIFY-001/006 — admin review. Previously auth:sanctum only, no role check — the concrete
+// `admin` role didn't exist in this codebase until `moderation`, which retroactively gates
+// these exact routes with `can:admin` below, a known, designed sequencing gap now closed.
 Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
     Route::post('/admin/verification-applications/{application}/approve', [VerificationReviewController::class, 'approve']);
     Route::post('/admin/verification-applications/{application}/reject', [VerificationReviewController::class, 'reject']);
     Route::get('/admin/verification-applications', [VerificationReviewController::class, 'index']);
+});
+
+// admin-auth (ADMIN-AUTH-004, amends moderation's ADMIN-004): revocation — the one existing
+// action judged high-impact enough to restrict beyond flat `admin` — is Super-Admin-exclusive.
+Route::middleware(['auth:sanctum', 'can:super-admin'])->group(function () {
     Route::post('/admin/promoters/{promoter}/revoke', [VerificationRevocationController::class, 'revokePromoter']);
     Route::post('/admin/venues/{venue}/revoke', [VerificationRevocationController::class, 'revokeVenue']);
 });
@@ -76,7 +102,7 @@ Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
 // PUBLISH-001..008 — publisher-facing write surface + status dashboard. `manage-events` is
 // verification's Gate, reused unmodified; EventPolicy::manage() layers per-row ownership on
 // top for show/update/cancel (route-model-bound, so a nonexistent id still 404s beforehand).
-Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('publisher')->group(function () {
+Route::middleware(['auth:sanctum', 'can:manage-events'])->prefix('admin/publisher')->group(function () {
     Route::post('/events', [PublisherEventController::class, 'store']);
     Route::get('/events', [PublisherEventController::class, 'index']);
     Route::get('/events/{event}', [PublisherEventController::class, 'show']);
