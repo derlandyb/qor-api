@@ -61,6 +61,19 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | Used to build links that must point at a browser-facing app rather than
+    | this API (e.g. the password-reset email link) — see User::createUrlUsing
+    | registration in AppServiceProvider.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
     'asset_url' => env('ASSET_URL'),
 
     /*
