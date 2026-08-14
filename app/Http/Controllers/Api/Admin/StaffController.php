@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\NewStaffAccountCredentials;
 use App\Support\TempPasswordGenerator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 final class StaffController extends Controller
 {
@@ -19,15 +20,23 @@ final class StaffController extends Controller
         $validated = $request->validated();
         $temporaryPassword = TempPasswordGenerator::generate();
 
-        $staff = User::query()->create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $temporaryPassword,
-            'role' => Role::Admin,
-            'must_change_password' => true,
-        ]);
+        // Transactional: the notification send is synchronous (QUEUE_CONNECTION=sync) and can
+        // throw (e.g. mail transport unreachable) — without a transaction, a mail failure would
+        // leave an orphaned staff row with an undeliverable temp password and no way to retell
+        // the admin it actually happened.
+        $staff = DB::transaction(function () use ($validated, $temporaryPassword) {
+            $staff = User::query()->create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $temporaryPassword,
+                'role' => Role::Admin,
+                'must_change_password' => true,
+            ]);
 
-        $staff->notify(new NewStaffAccountCredentials($temporaryPassword));
+            $staff->notify(new NewStaffAccountCredentials($temporaryPassword));
+
+            return $staff;
+        });
 
         // Deliberately only these four fields — the temp password is never returned here,
         // it only ever reaches the new account via the notification above.

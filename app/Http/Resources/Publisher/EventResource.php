@@ -26,20 +26,24 @@ final class EventResource extends JsonResource
             'startDateTime' => $this->start_date_time?->toIso8601String(),
             'endDateTime' => $this->end_date_time?->toIso8601String(),
             'venue' => new VenueResource($this->whenLoaded('venue')),
-            'price' => $this->when(
-                $this->is_free || ! is_null($this->price_min),
-                fn () => [
-                    'isFree' => $this->is_free,
-                    'min' => $this->price_min,
-                    'max' => $this->price_max,
-                    'currency' => $this->currency,
-                ],
-            ),
+            // Always present, even for a Draft with no price state yet — this.when() would
+            // omit the key entirely rather than return null, which crashed the admin edit
+            // form's `price === null` guard (it saw `undefined`, not `null`).
+            'price' => [
+                'isFree' => $this->is_free,
+                'min' => $this->price_min,
+                'max' => $this->price_max,
+                'currency' => $this->currency,
+            ],
             'ageRating' => $this->when(! is_null($this->age_rating), fn () => $this->age_rating->value),
             'genres' => $this->genres ?? [],
             'ticketUrl' => $this->ticket_url,
             'status' => $this->status->value,
             'reviewerFeedback' => $this->reviewer_feedback,
+            // A Venue account's dashboard scope is "events at my venue," which legitimately
+            // includes events a different Promoter account submitted — this makes that visible
+            // in the UI instead of reading as an unexplained cross-account leak.
+            'promoterNames' => $this->whenLoaded('promoters', fn () => $this->promoters->pluck('name')->all()),
         ];
     }
 }

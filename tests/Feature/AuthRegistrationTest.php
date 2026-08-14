@@ -26,7 +26,8 @@ it('given an already registered email when registering then it returns a validat
         'password' => 'password123',
         'password_confirmation' => 'password123',
     ])->assertUnprocessable()
-        ->assertJsonValidationErrors(['email']);
+        ->assertJsonValidationErrors(['email'])
+        ->assertJsonPath('errors.email.0', 'Este e-mail já está cadastrado.');
 });
 
 it('given a registered account when logging in with the correct password then a token is returned', function () {

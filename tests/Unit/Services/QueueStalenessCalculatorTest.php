@@ -67,3 +67,31 @@ it('given a verification application just past the 5 business day threshold when
 
     Carbon::setTestNow();
 });
+
+it('given a barely-old verification application when staleness is computed then ageValue is rounded, not a repeating float like 0.0007407407407407407', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-10 00:02:00')); // 2 minutes after creation, a Monday
+    $application = VerificationApplication::factory()->make([
+        'created_at' => Carbon::parse('2026-08-10 00:00:00'),
+        'status' => VerificationApplicationStatus::PendingReview,
+    ]);
+
+    $staleness = $this->calculator->forVerificationApplication($application);
+
+    // Unrounded this would be 120s / 86400s = 0.0013888... — confirms the fix actually rounds
+    // rather than merely happening to already be clean.
+    expect($staleness->ageValue)->toBe(0.0);
+
+    Carbon::setTestNow();
+});
+
+it('given a barely-old event queue item when staleness is computed then ageValue is rounded, not a repeating float', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-10 00:00:55'));
+    $enteredPendingAt = Carbon::parse('2026-08-10 00:00:00');
+
+    $staleness = $this->calculator->forEventQueueItem($enteredPendingAt);
+
+    // Unrounded this would be 55s / 3600s = 0.01527777... — confirms rounding actually happens.
+    expect($staleness->ageValue)->toBe(0.0);
+
+    Carbon::setTestNow();
+});

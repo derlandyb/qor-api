@@ -81,10 +81,17 @@ final class VerificationApplicationController extends Controller
 
         $latestApplication = $user->verificationApplications()->latest()->first();
 
+        // Two distinct sources write "why you're Unverified": a rejected application's own
+        // `rejection_feedback`, or — for a previously-Verified account — `revocation_reason`
+        // written directly onto the promoter/venue row by VerificationRevocationController.
+        // The latter never touches VerificationApplication, so it must be checked separately.
         $rejectionFeedback = null;
-        if ($profile->verification_status === VerificationStatus::Unverified
-            && $latestApplication?->status === VerificationApplicationStatus::Rejected) {
-            $rejectionFeedback = $latestApplication->rejection_feedback;
+        if ($profile->verification_status === VerificationStatus::Unverified) {
+            if ($latestApplication?->status === VerificationApplicationStatus::Rejected) {
+                $rejectionFeedback = $latestApplication->rejection_feedback;
+            } else {
+                $rejectionFeedback = $profile->revocation_reason;
+            }
         }
 
         return response()->json([

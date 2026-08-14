@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\JsonResponse;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -26,5 +27,38 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    /**
+     * Never let a JSON API response leak framework debug detail (exception class, file, line,
+     * stack trace) or a raw internal exception message (e.g. a mail-transport error), regardless
+     * of APP_DEBUG. Deliberately-thrown app exceptions with an intentional pt-BR message (e.g.
+     * `abort_if(..., 409, 'Este evento já foi cancelado.')`) are preserved unchanged.
+     */
+    public function render($request, Throwable $e)
+    {
+        $response = parent::render($request, $e);
+
+        if (! $request->expectsJson() || ! $response instanceof JsonResponse) {
+            return $response;
+        }
+
+        $data = $response->getData(true);
+        $status = $response->getStatusCode();
+
+        $hasDebugDetail = array_key_exists('exception', $data)
+            || array_key_exists('trace', $data)
+            || array_key_exists('file', $data)
+            || array_key_exists('line', $data);
+
+        if ($hasDebugDetail || $status >= 500) {
+            $message = $status >= 500
+                ? 'Ocorreu um erro inesperado.'
+                : ($data['message'] ?? 'Ocorreu um erro ao processar a solicitação.');
+
+            return response()->json(['message' => $message], $status);
+        }
+
+        return $response;
     }
 }

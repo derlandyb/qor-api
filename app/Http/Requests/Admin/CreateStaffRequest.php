@@ -21,4 +21,14 @@ final class CreateStaffRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.unique' => 'Este e-mail já está cadastrado.',
+        ];
+    }
 }

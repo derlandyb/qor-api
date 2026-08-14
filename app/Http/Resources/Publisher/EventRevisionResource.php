@@ -20,15 +20,14 @@ final class EventRevisionResource extends JsonResource
             'startDateTime' => $this->start_date_time->toIso8601String(),
             'endDateTime' => $this->when($this->end_date_time !== null, fn () => $this->end_date_time->toIso8601String()),
             'venueId' => (string) $this->venue_id,
-            'price' => $this->when(
-                $this->is_free || ! is_null($this->price_min),
-                fn () => [
-                    'isFree' => $this->is_free,
-                    'min' => $this->price_min,
-                    'max' => $this->price_max,
-                    'currency' => $this->currency,
-                ],
-            ),
+            // Always present — see EventResource's identical fix; the frontend's `price === null`
+            // guard breaks when the key is omitted entirely instead of set to null.
+            'price' => [
+                'isFree' => $this->is_free,
+                'min' => $this->price_min,
+                'max' => $this->price_max,
+                'currency' => $this->currency,
+            ],
             'ageRating' => $this->when(! is_null($this->age_rating), fn () => $this->age_rating->value),
             'genres' => $this->genres ?? [],
             'ticketUrl' => $this->ticket_url,

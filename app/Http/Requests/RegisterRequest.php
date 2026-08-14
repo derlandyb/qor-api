@@ -25,6 +25,18 @@ final class RegisterRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        // Laravel's default `unique` message ("The email has already been taken.") renders in
+        // English inside an otherwise fully pt-BR UI.
+        return [
+            'email.unique' => 'Este e-mail já está cadastrado.',
+        ];
+    }
+
+    /**
      * The single source of truth for "what counts as a strong enough password" — reused by
      * admin-auth's PasswordChangeController and staff temp-password generation rather than
      * being reimplemented.

@@ -49,6 +49,9 @@ Route::post('/admin/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/admin/logout', [AuthController::class, 'logout']);
 Route::post('/admin/password/forgot', [PasswordResetController::class, 'forgot']);
 Route::post('/admin/password/reset', [PasswordResetController::class, 'reset']);
+// Lets qor-admin rehydrate `user`/`mustChangePassword` from a stored token after a hard
+// navigation/reload, instead of only ever populating it via login()'s in-memory response.
+Route::middleware('auth:sanctum')->get('/admin/me', [AuthController::class, 'me']);
 
 // ADMIN-AUTH-003 — any authenticated role; the one route that works regardless of
 // must_change_password, since it's how the flag itself gets cleared.
@@ -71,6 +74,14 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/verification/applications', [VerificationApplicationController::class, 'store']);
     Route::get('/verification/status', [VerificationApplicationController::class, 'status']);
+});
+
+// These two self-service endpoints were missed during admin-auth's /api/admin/* rename, even
+// though qor-admin's own applicant-facing /verification form calls them. Pure aliases onto the
+// same controller methods above, matching the /admin/register-style pattern.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/admin/verification/applications', [VerificationApplicationController::class, 'store']);
+    Route::get('/admin/verification/status', [VerificationApplicationController::class, 'status']);
 });
 
 // VERIFY-001/006 — admin review. Previously auth:sanctum only, no role check — the concrete

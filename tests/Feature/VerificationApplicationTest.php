@@ -109,6 +109,27 @@ it('given a rejected application when the verification status is checked then fe
         ->assertJsonPath('rejectionFeedback', 'Faltou o link de contato.');
 });
 
+it('given a revoked verified account when the verification status is checked then the revocation reason is visible', function () {
+    $applicant = User::factory()->create();
+    $promoter = Promoter::factory()->create([
+        'user_id' => $applicant->id,
+        'verification_status' => VerificationStatus::Unverified,
+        'revocation_reason' => 'Documentação vencida, necessário reenviar comprovantes atualizados.',
+    ]);
+    $application = VerificationApplication::factory()->create([
+        'user_id' => $applicant->id,
+        'promoter_id' => $promoter->id,
+        'venue_id' => null,
+        'status' => VerificationApplicationStatus::Verified,
+    ]);
+    Sanctum::actingAs($applicant);
+
+    $this->getJson('/api/verification/status')
+        ->assertOk()
+        ->assertJsonPath('status', 'unverified')
+        ->assertJsonPath('rejectionFeedback', 'Documentação vencida, necessário reenviar comprovantes atualizados.');
+});
+
 test('given no Sanctum token when verification endpoints are called then it returns unauthorized', function (string $method, string $uri) {
     $this->json($method, $uri)->assertUnauthorized();
 })->with([

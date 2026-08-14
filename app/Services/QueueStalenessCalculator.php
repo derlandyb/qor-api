@@ -26,7 +26,10 @@ final class QueueStalenessCalculator
         $ageValue = $this->businessDayCalculator->businessDaysBetween($application->created_at, now());
 
         return new StalenessView(
-            ageValue: $ageValue,
+            // Rounded here, once, so every caller (Web queue formatters included) gets a
+            // display-ready value instead of a repeating float like 0.0007407407407407407 —
+            // isStale itself is still decided against the unrounded value just above.
+            ageValue: round($ageValue, 1),
             ageUnit: 'business_days',
             isStale: $ageValue > self::VERIFICATION_THRESHOLD_BUSINESS_DAYS,
             thresholdValue: self::VERIFICATION_THRESHOLD_BUSINESS_DAYS,
@@ -38,7 +41,7 @@ final class QueueStalenessCalculator
         $ageHours = $enteredPendingAt->diffInSeconds(now()) / 3600;
 
         return new StalenessView(
-            ageValue: $ageHours,
+            ageValue: round($ageHours, 1),
             ageUnit: 'hours',
             isStale: $ageHours > self::EVENT_THRESHOLD_HOURS,
             thresholdValue: self::EVENT_THRESHOLD_HOURS,
