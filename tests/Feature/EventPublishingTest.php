@@ -159,7 +159,9 @@ it('given an event owned by another publisher when it is accessed then it is for
     Venue::factory()->create(['user_id' => $intruder->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($intruder);
 
-    $this->getJson("/api/admin/publisher/events/{$event->id}")->assertForbidden();
+    $this->getJson("/api/admin/publisher/events/{$event->id}")
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Você não tem permissão para executar esta ação.');
 });
 
 test('given no Sanctum token when the publisher create endpoint is called then it returns unauthorized', function () {
