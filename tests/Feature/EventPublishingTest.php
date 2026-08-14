@@ -63,7 +63,11 @@ it('given a verified promoter when saving a draft with only a title then it succ
     $this->postJson('/api/admin/publisher/events', ['action' => 'draft', 'title' => 'Rascunho'])
         ->assertCreated()
         ->assertJsonPath('data.status', 'draft')
-        ->assertJsonPath('data.title', 'Rascunho');
+        ->assertJsonPath('data.title', 'Rascunho')
+        // `price` must always be present (not omitted) even with no price state yet — an
+        // admin edit-form regression (Bug 7A) happened precisely because this key went missing.
+        ->assertJsonPath('data.price.isFree', false)
+        ->assertJsonPath('data.price.min', null);
 });
 
 it('given a submit action missing required fields when creating an event then it returns field level errors', function () {

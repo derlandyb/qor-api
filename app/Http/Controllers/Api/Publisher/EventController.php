@@ -41,7 +41,7 @@ final class EventController extends Controller
 
         $items = Event::query()
             ->ownedBy($user)
-            ->with(['venue', 'pendingRevision'])
+            ->with(['venue', 'pendingRevision', 'promoters'])
             ->get()
             ->map(fn (Event $event) => [
                 'event' => new EventResource($event),
