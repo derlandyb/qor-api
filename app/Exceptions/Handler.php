@@ -32,10 +32,8 @@ class Handler extends ExceptionHandler
     /**
      * Never let a JSON API response leak framework debug detail (exception class, file, line,
      * stack trace) or a raw internal exception message (e.g. a mail-transport error), regardless
-     * of APP_DEBUG — the QA-confirmed leak (Ignition/Whoops-style trace dumps, raw connection
-     * error strings) reached real API clients purely because APP_DEBUG happened to be true.
-     * Deliberately-thrown app exceptions with an intentional pt-BR message (e.g. `abort_if(...,
-     * 409, 'Este evento já foi cancelado.')`) are preserved unchanged.
+     * of APP_DEBUG. Deliberately-thrown app exceptions with an intentional pt-BR message (e.g.
+     * `abort_if(..., 409, 'Este evento já foi cancelado.')`) are preserved unchanged.
      */
     public function render($request, Throwable $e)
     {

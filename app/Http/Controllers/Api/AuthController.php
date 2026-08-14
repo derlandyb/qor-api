@@ -54,8 +54,8 @@ final class AuthController extends Controller
         ]);
     }
 
-    // Bug 1 fix — lets a client rehydrate `user`/`mustChangePassword` from a stored token
-    // (e.g. after a hard navigation/reload), in the same shape login() already returns.
+    // Lets a client rehydrate `user`/`mustChangePassword` from a stored token (e.g. after a
+    // hard navigation/reload), in the same shape login() already returns.
     public function me(Request $request): JsonResponse
     {
         /** @var User $user */

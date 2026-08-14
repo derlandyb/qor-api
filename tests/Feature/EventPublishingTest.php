@@ -64,8 +64,8 @@ it('given a verified promoter when saving a draft with only a title then it succ
         ->assertCreated()
         ->assertJsonPath('data.status', 'draft')
         ->assertJsonPath('data.title', 'Rascunho')
-        // `price` must always be present (not omitted) even with no price state yet — an
-        // admin edit-form regression (Bug 7A) happened precisely because this key went missing.
+        // `price` must always be present (not omitted) even with no price state yet — an admin
+        // edit-form crash happened precisely because this key went missing.
         ->assertJsonPath('data.price.isFree', false)
         ->assertJsonPath('data.price.min', null);
 });

@@ -42,7 +42,7 @@ final class EventResource extends JsonResource
             'reviewerFeedback' => $this->reviewer_feedback,
             // A Venue account's dashboard scope is "events at my venue," which legitimately
             // includes events a different Promoter account submitted — this makes that visible
-            // in the UI instead of reading as an unexplained cross-account leak (Scenario 8).
+            // in the UI instead of reading as an unexplained cross-account leak.
             'promoterNames' => $this->whenLoaded('promoters', fn () => $this->promoters->pluck('name')->all()),
         ];
     }
