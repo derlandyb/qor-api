@@ -61,6 +61,27 @@ final class EventSubmitRequest extends FormRequest
         ];
     }
 
+    /**
+     * Multipart/form-data (used for the coverImage file upload) can't natively represent "this
+     * array field is present but empty" the way JSON's `[]` can — repeating `genres[]`/
+     * `artistIds[]` zero times is indistinguishable from omitting the field entirely. The Web
+     * client works around this by JSON-encoding these two fields into a single string when it
+     * needs to send an explicit empty array (e.g. clearing every previously-attached artist);
+     * decode them back into arrays here before validation runs.
+     */
+    protected function prepareForValidation(): void
+    {
+        foreach (['genres', 'artistIds'] as $field) {
+            if (is_string($this->input($field))) {
+                $decoded = json_decode($this->input($field), true);
+
+                if (is_array($decoded)) {
+                    $this->merge([$field => $decoded]);
+                }
+            }
+        }
+    }
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {

@@ -23,6 +23,7 @@ use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The read side of both moderation queues, each row annotated with staleness (ADMIN-005) —
@@ -150,8 +151,8 @@ final class ModerationQueueController extends Controller
         $rows = [];
 
         foreach (self::DIFFABLE_FIELDS as $field) {
-            $before = $this->comparable($event->{$field});
-            $after = $this->comparable($revision->{$field});
+            $before = $this->comparable($event->{$field}, $field);
+            $after = $this->comparable($revision->{$field}, $field);
 
             if ($before !== $after) {
                 $rows[] = ['field' => $field, 'before' => $before, 'after' => $after];
@@ -161,8 +162,14 @@ final class ModerationQueueController extends Controller
         return $rows;
     }
 
-    private function comparable(mixed $value): mixed
+    private function comparable(mixed $value, string $field): mixed
     {
+        // cover_image_path is an S3 object key, not something a moderator can preview directly —
+        // resolve it to the same public URL every Resource class already returns as coverImageUrl.
+        if ($field === 'cover_image_path') {
+            return $value !== null ? Storage::disk('s3')->url($value) : null;
+        }
+
         return match (true) {
             $value instanceof CarbonInterface => $value->toIso8601String(),
             $value instanceof BackedEnum => $value->value,

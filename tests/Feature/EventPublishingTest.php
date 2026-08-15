@@ -2,6 +2,7 @@
 
 use App\Enums\EventStatus;
 use App\Enums\VerificationStatus;
+use App\Models\Artist;
 use App\Models\Event;
 use App\Models\EventRevision;
 use App\Models\Promoter;
@@ -329,4 +330,39 @@ it('given an s3 upload failure when editing a published event then it returns a 
 
     expect($event->fresh()->title)->toBe('Original')
         ->and($event->fresh()->pendingRevision)->toBeNull();
+});
+
+it('given genres and artistIds sent as JSON-encoded strings (the Web client\'s multipart representation) when creating an event then both decode into arrays', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $venue = Venue::factory()->create();
+    $artist = Artist::factory()->create();
+    Sanctum::actingAs($user);
+
+    $response = $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload([
+        'venueId' => $venue->id,
+        'genres' => json_encode(['rock', 'punk']),
+        'artistIds' => json_encode([$artist->id]),
+    ]))->assertCreated();
+
+    $event = Event::query()->findOrFail($response->json('data.id'));
+    expect($event->genres)->toBe(['rock', 'punk'])
+        ->and($event->artists->pluck('id')->all())->toBe([$artist->id]);
+});
+
+it('given a published event with attached artists when its artistIds selection is explicitly cleared to an empty JSON array then every artist association is removed', function () {
+    $user = User::factory()->create();
+    $venue = Venue::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create(['status' => EventStatus::Draft]);
+    $artist = Artist::factory()->create();
+    $event->artists()->attach($artist->id);
+    Sanctum::actingAs($user);
+
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", validEventPayload([
+        'action' => 'draft',
+        'venueId' => $venue->id,
+        'artistIds' => json_encode([]),
+    ]))->assertOk();
+
+    expect($event->artists()->count())->toBe(0);
 });
