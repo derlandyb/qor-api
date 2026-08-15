@@ -4,6 +4,7 @@ use App\Enums\EventStatus;
 use App\Models\Event;
 use App\Models\Promoter;
 use App\Models\Venue;
+use Illuminate\Support\Facades\Storage;
 
 it('given a cancelled event when an anonymous visitor opens its detail then it returns the event with a cancelled status', function () {
     $event = Event::factory()->for(Venue::factory())->create([
@@ -100,6 +101,31 @@ it('given an event with a promoter when its detail is requested then it returns 
     $this->getJson("/api/events/{$event->id}")
         ->assertOk()
         ->assertJsonPath('data.promoter.name', 'Rock Produções');
+});
+
+it('given an event with a stored cover image when its detail is requested then coverImageUrl resolves the public s3 url', function () {
+    Storage::fake('s3');
+    $event = Event::factory()->for(Venue::factory())->create([
+        'status' => EventStatus::Published,
+        'start_date_time' => now()->addDay(),
+        'cover_image_path' => 'events/covers/cover.jpg',
+    ]);
+
+    $this->getJson("/api/events/{$event->id}")
+        ->assertOk()
+        ->assertJsonPath('data.coverImageUrl', Storage::disk('s3')->url('events/covers/cover.jpg'));
+});
+
+it('given an event with no stored cover image when its detail is requested then coverImageUrl is null', function () {
+    $event = Event::factory()->for(Venue::factory())->create([
+        'status' => EventStatus::Published,
+        'start_date_time' => now()->addDay(),
+        'cover_image_path' => null,
+    ]);
+
+    $this->getJson("/api/events/{$event->id}")
+        ->assertOk()
+        ->assertJsonPath('data.coverImageUrl', null);
 });
 
 it('given a venue with coordinates when its detail is requested then it returns a static map url', function () {

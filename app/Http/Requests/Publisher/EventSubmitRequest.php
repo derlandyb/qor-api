@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Publisher;
 
 use App\Enums\AgeRating;
+use App\Models\Event;
 use App\Models\User;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -38,7 +40,10 @@ final class EventSubmitRequest extends FormRequest
             'action' => ['required', 'string', 'in:draft,submit'],
             'title' => ['required', 'string', 'max:255'],
             'description' => [$submit ? 'required' : 'nullable', 'string', 'max:5000'],
-            'coverImageUrl' => [$submit ? 'required' : 'nullable', 'string', 'max:255'],
+            // Required-on-submit is relaxed by withValidator() below when the route-bound Event
+            // already has a stored cover image — a browser file input can't be pre-filled, so
+            // re-uploading on every submit would be broken UX.
+            'coverImage' => [$submit ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'startDateTime' => [$submit ? 'required' : 'nullable', 'date'],
             'endDateTime' => ['nullable', 'date', 'after:startDateTime'],
             'venueId' => [$venueIdRequired ? 'required' : 'nullable', 'integer', 'exists:venues,id'],
@@ -54,5 +59,43 @@ final class EventSubmitRequest extends FormRequest
             // No URL validation — reuses event-feed's no-crawl stance (TICKET-001).
             'ticketUrl' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /**
+     * Multipart/form-data (used for the coverImage file upload) can't natively represent "this
+     * array field is present but empty" the way JSON's `[]` can — repeating `genres[]`/
+     * `artistIds[]` zero times is indistinguishable from omitting the field entirely. The Web
+     * client works around this by JSON-encoding these two fields into a single string when it
+     * needs to send an explicit empty array (e.g. clearing every previously-attached artist);
+     * decode them back into arrays here before validation runs.
+     */
+    protected function prepareForValidation(): void
+    {
+        foreach (['genres', 'artistIds'] as $field) {
+            if (is_string($this->input($field))) {
+                $decoded = json_decode($this->input($field), true);
+
+                if (is_array($decoded)) {
+                    $this->merge([$field => $decoded]);
+                }
+            }
+        }
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($this->input('action') !== 'submit' || $this->hasFile('coverImage')) {
+                return;
+            }
+
+            /** @var Event|null $event */
+            $event = $this->route('event');
+
+            if ($event !== null && $event->cover_image_path !== null) {
+                // Already-stored cover from an earlier draft/edit satisfies the submit requirement.
+                $validator->errors()->forget('coverImage');
+            }
+        });
     }
 }

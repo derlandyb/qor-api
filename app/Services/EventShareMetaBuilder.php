@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\BannerStatus;
 use App\Models\Event;
+use Illuminate\Support\Facades\Storage;
 
 final class EventShareMetaBuilder
 {
@@ -25,7 +26,7 @@ final class EventShareMetaBuilder
             // SHARE-004: minimum shareable content is title + cover image + date/venue snippet.
             description: "{$dateLabel} · {$venueLabel}",
             // Omitted (not a broken <img>) when unset — Edge Cases: missing cover image still yields a valid link.
-            imageUrl: $event->cover_image_url,
+            imageUrl: $event->cover_image_path !== null ? Storage::disk('s3')->url($event->cover_image_path) : null,
             bannerStatus: $bannerStatus,
         );
     }

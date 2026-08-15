@@ -35,7 +35,7 @@ final class EventReviewController extends Controller
 
             if ($revision) {
                 $event->fill($revision->only([
-                    'title', 'description', 'cover_image_url', 'start_date_time', 'end_date_time',
+                    'title', 'description', 'cover_image_path', 'start_date_time', 'end_date_time',
                     'venue_id', 'price_min', 'price_max', 'is_free', 'currency', 'age_rating',
                     'genres', 'ticket_url',
                 ]));

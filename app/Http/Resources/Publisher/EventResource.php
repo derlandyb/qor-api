@@ -6,6 +6,7 @@ use App\Http\Resources\VenueResource;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The publisher-facing (owner's own) event representation — unlike the public EventResource,
@@ -22,7 +23,7 @@ final class EventResource extends JsonResource
             'id' => (string) $this->id,
             'title' => $this->title,
             'description' => $this->description,
-            'coverImageUrl' => $this->cover_image_url,
+            'coverImageUrl' => $this->cover_image_path !== null ? Storage::disk('s3')->url($this->cover_image_path) : null,
             'startDateTime' => $this->start_date_time?->toIso8601String(),
             'endDateTime' => $this->end_date_time?->toIso8601String(),
             'venue' => new VenueResource($this->whenLoaded('venue')),

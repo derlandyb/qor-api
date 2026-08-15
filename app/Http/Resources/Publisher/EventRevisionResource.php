@@ -5,6 +5,7 @@ namespace App\Http\Resources\Publisher;
 use App\Models\EventRevision;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /** @mixin EventRevision */
 final class EventRevisionResource extends JsonResource
@@ -16,7 +17,7 @@ final class EventRevisionResource extends JsonResource
             'eventId' => (string) $this->event_id,
             'title' => $this->title,
             'description' => $this->description,
-            'coverImageUrl' => $this->cover_image_url,
+            'coverImageUrl' => $this->cover_image_path !== null ? Storage::disk('s3')->url($this->cover_image_path) : null,
             'startDateTime' => $this->start_date_time->toIso8601String(),
             'endDateTime' => $this->when($this->end_date_time !== null, fn () => $this->end_date_time->toIso8601String()),
             'venueId' => (string) $this->venue_id,

@@ -14,6 +14,11 @@ use App\Models\Venue;
 use App\Models\VerificationApplication;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Populates the four PRD-scoped Grande Vitória cities (Vitória, Vila Velha, Serra, Cariacica)
@@ -178,7 +183,7 @@ class DemoDataSeeder extends Seeder
             $event = Event::query()->create([
                 'title' => $title,
                 'description' => "{$title} — evento ao vivo na Grande Vitória.",
-                'cover_image_url' => null,
+                'cover_image_path' => $this->downloadCoverImagePath($title),
                 'start_date_time' => $start,
                 'venue_id' => $venues[$venueHandle]->id,
                 'price_min' => $isFree ? null : $priceMin,
@@ -192,6 +197,41 @@ class DemoDataSeeder extends Seeder
 
             $event->artists()->attach(array_map(fn (string $handle) => $artists[$handle]->id, $artistHandles));
             $event->promoters()->attach($promoters[$promoterHandle]->id);
+        }
+    }
+
+    /**
+     * Downloads a generic music/concert-ish stock image (picsum.photos, seeded by the event's
+     * own title so re-seeding a fresh database yields the same picture per event) and stores it
+     * through the same S3 disk/path prefix EventController uses for real uploads — so seeded
+     * events render real covers instead of a null placeholder. Best-effort: seeding must not
+     * fail just because the network/picsum is unavailable, so a failure logs a warning and
+     * leaves the event's cover_image_path null, same as a publisher who skipped the upload.
+     */
+    private function downloadCoverImagePath(string $seed): ?string
+    {
+        try {
+            $response = Http::timeout(5)->get('https://picsum.photos/seed/'.Str::slug($seed).'/800/450');
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $path = 'events/covers/'.Str::uuid()->toString().'.jpg';
+
+            // The s3 disk is configured with `throw` => false, so a write failure (e.g. bucket
+            // unreachable) surfaces as a `false` return rather than an exception — checked
+            // explicitly so a failed write never leaves a DB row pointing at a file that was
+            // never actually stored.
+            if (Storage::disk('s3')->put($path, $response->body()) === false) {
+                return null;
+            }
+
+            return $path;
+        } catch (Throwable $e) {
+            Log::warning('DemoDataSeeder cover image download failed', ['exception' => $e, 'seed' => $seed]);
+
+            return null;
         }
     }
 

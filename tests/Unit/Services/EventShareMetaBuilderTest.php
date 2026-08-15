@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\Venue;
 use App\Services\EventShareMetaBuilder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 it('given a published upcoming event when share metadata is built then the title has no status suffix and no banner status', function () {
     $venue = Venue::factory()->state(['name' => 'Arena Fonte Nova', 'city' => 'Vitória']);
@@ -55,17 +56,18 @@ it('given a finished event when share metadata is built then the title is suffix
 });
 
 it('given an event with a cover image when share metadata is built then the image url is included', function () {
+    Storage::fake('s3');
     $venue = Venue::factory()->state(['city' => 'Vitória']);
     $event = Event::factory()->for($venue)->make([
         'status' => EventStatus::Published,
         'start_date_time' => now()->addWeek(),
-        'cover_image_url' => 'https://example.com/cover.jpg',
+        'cover_image_path' => 'events/covers/cover.jpg',
         'city' => 'Vitória',
     ]);
 
     $meta = EventShareMetaBuilder::build($event);
 
-    expect($meta->imageUrl)->toBe('https://example.com/cover.jpg');
+    expect($meta->imageUrl)->toBe(Storage::disk('s3')->url('events/covers/cover.jpg'));
 });
 
 it('given an event with no cover image when share metadata is built then the image url is absent, not an empty string', function () {
@@ -73,7 +75,7 @@ it('given an event with no cover image when share metadata is built then the ima
     $event = Event::factory()->for($venue)->make([
         'status' => EventStatus::Published,
         'start_date_time' => now()->addWeek(),
-        'cover_image_url' => null,
+        'cover_image_path' => null,
         'city' => 'Vitória',
     ]);
 

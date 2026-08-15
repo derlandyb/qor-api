@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /** @mixin Event */
 final class EventResource extends JsonResource
@@ -15,7 +16,7 @@ final class EventResource extends JsonResource
             'id' => (string) $this->id,
             'title' => $this->title,
             // Always present — null renders as a placeholder image client-side, never omitted.
-            'coverImageUrl' => $this->cover_image_url,
+            'coverImageUrl' => $this->cover_image_path !== null ? Storage::disk('s3')->url($this->cover_image_path) : null,
             'startDateTime' => $this->start_date_time->toIso8601String(),
             'venue' => new VenueResource($this->whenLoaded('venue')),
             'city' => $this->city,

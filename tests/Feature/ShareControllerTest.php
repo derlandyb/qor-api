@@ -3,6 +3,7 @@
 use App\Enums\EventStatus;
 use App\Models\Event;
 use App\Models\Venue;
+use Illuminate\Support\Facades\Storage;
 
 const CRAWLER_UA = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
 const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15';
@@ -22,11 +23,12 @@ it('given a shared cancelled event when its public route is opened then it resol
 });
 
 test('given a crawler user agent when a published event share route is opened then it returns crawler-visible OG html', function () {
+    Storage::fake('s3');
     $event = Event::factory()->for(Venue::factory())->create([
         'title' => 'Show de Rock',
         'status' => EventStatus::Published,
         'start_date_time' => now()->addWeek(),
-        'cover_image_url' => 'https://example.com/cover.jpg',
+        'cover_image_path' => 'events/covers/cover.jpg',
     ]);
 
     $response = $this->withHeaders(['User-Agent' => CRAWLER_UA])
@@ -36,7 +38,7 @@ test('given a crawler user agent when a published event share route is opened th
     $response->assertHeader('content-type', 'text/html; charset=UTF-8');
     $response->assertSee('og:title', false);
     $response->assertSee('Show de Rock', false);
-    $response->assertSee('https://example.com/cover.jpg', false);
+    $response->assertSee(Storage::disk('s3')->url('events/covers/cover.jpg'), false);
 });
 
 test('given a crawler user agent when a finished event share route is opened then it still returns 200, never 404', function () {

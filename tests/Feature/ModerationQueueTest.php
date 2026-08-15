@@ -10,6 +10,7 @@ use App\Models\Promoter;
 use App\Models\User;
 use App\Models\Venue;
 use App\Models\VerificationApplication;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 it('given no pending verification applications when the queue is fetched then queueStaleness is null', function () {
@@ -75,6 +76,28 @@ it('given a new submission and a published edit when the event queue is fetched 
     expect($titleDiff)->not->toBeNull()
         ->and($titleDiff['before'])->toBe('Original')
         ->and($titleDiff['after'])->toBe('Editado');
+});
+
+it('given a published edit with a changed cover image path when the event queue diff is built then the field resolves to public urls, not raw s3 keys', function () {
+    Storage::fake('s3');
+    $venue = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
+    $publishedEvent = Event::factory()->for($venue)->create([
+        'status' => EventStatus::Published,
+        'cover_image_path' => 'events/covers/old.jpg',
+    ]);
+    EventRevision::factory()->for($publishedEvent)->create([
+        'status' => EventRevisionStatus::PendingApproval,
+        'cover_image_path' => 'events/covers/new.jpg',
+    ]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $response = $this->getJson('/api/admin/moderation/event-queue')->assertOk();
+    $editItem = collect($response->json('data'))->keyBy('event.id')[(string) $publishedEvent->id];
+
+    $coverDiff = collect($editItem['diff'])->firstWhere('field', 'cover_image_path');
+    expect($coverDiff)->not->toBeNull()
+        ->and($coverDiff['before'])->toBe(Storage::disk('s3')->url('events/covers/old.jpg'))
+        ->and($coverDiff['after'])->toBe(Storage::disk('s3')->url('events/covers/new.jpg'));
 });
 
 it('given verified promoters and venues when the verified accounts list is fetched then both entity types appear', function () {
