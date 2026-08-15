@@ -19,7 +19,7 @@ class EventFactory extends Factory
         return [
             'title' => fake()->sentence(3),
             'description' => fake()->paragraph(),
-            'cover_image_url' => fake()->imageUrl(),
+            'cover_image_path' => 'events/covers/'.fake()->uuid().'.jpg',
             'start_date_time' => fake()->dateTimeBetween('+1 day', '+2 months'),
             'end_date_time' => null,
             'venue_id' => Venue::factory(),

@@ -45,6 +45,23 @@ it('given a moderator when approving a pending event edit then the public event 
     expect(collect($queue->json('data'))->pluck('event.id'))->not->toContain((string) $event->id);
 });
 
+it('given a moderator when approving a pending event edit then the revisions cover image path copies verbatim onto the live event', function () {
+    $venue = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create([
+        'status' => EventStatus::Published,
+        'cover_image_path' => 'events/covers/old.jpg',
+    ]);
+    EventRevision::factory()->for($event)->create([
+        'status' => EventRevisionStatus::PendingApproval,
+        'cover_image_path' => 'events/covers/new.jpg',
+    ]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson("/api/admin/events/{$event->id}/approve")->assertOk();
+
+    expect($event->fresh()->cover_image_path)->toBe('events/covers/new.jpg');
+});
+
 it('given a publisher when reviewing another publishers submission then it is forbidden', function () {
     $owner = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
     $event = Event::factory()->for($owner)->create(['status' => EventStatus::PendingApproval]);

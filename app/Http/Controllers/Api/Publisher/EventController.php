@@ -12,6 +12,9 @@ use App\Models\User;
 use App\Services\EventDashboardStatusResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * The full publisher-facing write surface plus the status-dashboard read (PUBLISH-001..008).
@@ -27,7 +30,12 @@ final class EventController extends Controller
         $validated = $request->validated();
         $submit = $validated['action'] === 'submit';
 
-        $event = Event::submitForApproval($this->mappedFields($validated, $user), $submit);
+        $coverImagePath = $this->resolveCoverImagePath($request, null);
+        if ($coverImagePath instanceof JsonResponse) {
+            return $coverImagePath;
+        }
+
+        $event = Event::submitForApproval($this->mappedFields($validated, $user, $coverImagePath), $submit);
 
         $this->syncOwnership($event, $user, $validated);
 
@@ -75,7 +83,13 @@ final class EventController extends Controller
         /** @var User $user */
         $user = $request->user();
         $validated = $request->validated();
-        $fields = $this->mappedFields($validated, $user);
+
+        $coverImagePath = $this->resolveCoverImagePath($request, $event);
+        if ($coverImagePath instanceof JsonResponse) {
+            return $coverImagePath;
+        }
+
+        $fields = $this->mappedFields($validated, $user, $coverImagePath);
 
         if ($event->status === EventStatus::Published) {
             $event->submitEdit($fields);
@@ -122,7 +136,7 @@ final class EventController extends Controller
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    private function mappedFields(array $validated, User $user): array
+    private function mappedFields(array $validated, User $user, ?string $coverImagePath): array
     {
         $venueId = $user->venueProfile !== null
             ? $user->venueProfile->id
@@ -131,7 +145,7 @@ final class EventController extends Controller
         return [
             'title' => $validated['title'],
             'description' => isset($validated['description']) ? strip_tags($validated['description']) : null,
-            'cover_image_url' => $validated['coverImageUrl'] ?? null,
+            'cover_image_path' => $coverImagePath,
             'start_date_time' => $validated['startDateTime'] ?? null,
             'end_date_time' => $validated['endDateTime'] ?? null,
             'venue_id' => $venueId,
@@ -162,5 +176,45 @@ final class EventController extends Controller
         if (array_key_exists('artistIds', $validated) && $validated['artistIds'] !== null) {
             $event->artists()->sync($validated['artistIds']);
         }
+    }
+
+    /**
+     * Resolves the stored S3 key for `cover_image_path`, run before any Event/EventRevision
+     * write so an upload failure never leaves a partial record behind. A newly-uploaded file is
+     * stored and its key returned; otherwise the live `$event`'s current path is carried forward
+     * unchanged (`null` for a brand-new event) — omitting the field in FormData must never be
+     * read as "clear the cover image." Mirrors VerificationApplicationController's upload
+     * try/catch, but — unlike that best-effort document upload — a failure here blocks the
+     * write and surfaces a structured error, since the cover image is a required, user-visible
+     * submission field rather than an optional supporting document.
+     */
+    private function resolveCoverImagePath(Request $request, ?Event $event): string|JsonResponse|null
+    {
+        if (! $request->hasFile('coverImage')) {
+            return $event?->cover_image_path;
+        }
+
+        try {
+            // The s3 disk is configured with `throw` => false, so a write failure surfaces as a
+            // `false` return rather than an exception in normal operation — the catch block below
+            // only covers the narrower set of failures (e.g. a bad stream) that escape that guard.
+            $path = Storage::disk('s3')->putFile('events/covers', $request->file('coverImage'));
+        } catch (Throwable $e) {
+            Log::error('Event cover image upload failed', ['exception' => $e]);
+
+            return response()->json([
+                'message' => 'Não foi possível enviar a imagem de capa. Tente novamente.',
+            ], 502);
+        }
+
+        if ($path === false) {
+            Log::error('Event cover image upload failed');
+
+            return response()->json([
+                'message' => 'Não foi possível enviar a imagem de capa. Tente novamente.',
+            ], 502);
+        }
+
+        return $path;
     }
 }

@@ -22,7 +22,7 @@ final class Event extends Model
     private const RESUBMITTABLE_STATUSES = [EventStatus::Draft, EventStatus::PendingApproval, EventStatus::ChangesRequested];
 
     protected $fillable = [
-        'title', 'description', 'cover_image_url', 'start_date_time', 'end_date_time',
+        'title', 'description', 'cover_image_path', 'start_date_time', 'end_date_time',
         'venue_id', 'city', 'price_min', 'price_max', 'is_free', 'currency',
         'age_rating', 'genres', 'ticket_url', 'status', 'reviewer_feedback',
     ];

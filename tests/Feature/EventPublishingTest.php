@@ -7,6 +7,9 @@ use App\Models\EventRevision;
 use App\Models\Promoter;
 use App\Models\User;
 use App\Models\Venue;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 function validEventPayload(array $overrides = []): array
@@ -15,7 +18,7 @@ function validEventPayload(array $overrides = []): array
         'action' => 'submit',
         'title' => 'Rock in Rio Warm-up',
         'description' => 'Uma noite de rock pesado.',
-        'coverImageUrl' => 'https://example.com/cover.jpg',
+        'coverImage' => UploadedFile::fake()->create('cover.jpg', 100, 'image/jpeg'),
         'startDateTime' => now()->addMonth()->toIso8601String(),
         'endDateTime' => null,
         'priceMin' => 40,
@@ -28,13 +31,17 @@ function validEventPayload(array $overrides = []): array
     ], $overrides);
 }
 
+beforeEach(function () {
+    Storage::fake('s3');
+});
+
 it('given a verified promoter when creating a complete event then a pending approval submission is created', function () {
     $user = User::factory()->create();
     $promoter = Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
     $venue = Venue::factory()->create();
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/admin/publisher/events', validEventPayload(['venueId' => $venue->id]))
+    $response = $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload(['venueId' => $venue->id]))
         ->assertCreated()
         ->assertJsonPath('data.status', 'pending_approval');
 
@@ -49,7 +56,7 @@ it('given an unverified venue when creating an event then it is forbidden', func
     Venue::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Unverified]);
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/admin/publisher/events', validEventPayload())
+    $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload())
         ->assertForbidden();
 
     expect(Event::query()->count())->toBe(0);
@@ -77,7 +84,7 @@ it('given a submit action missing required fields when creating an event then it
 
     $this->postJson('/api/admin/publisher/events', ['action' => 'submit', 'title' => 'Incompleto'])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['description', 'coverImageUrl', 'startDateTime', 'venueId']);
+        ->assertJsonValidationErrors(['description', 'coverImage', 'startDateTime', 'venueId']);
 });
 
 it('given a venue account when creating an event with a different venueId then the server overrides it to the venue\'s own row', function () {
@@ -86,7 +93,7 @@ it('given a venue account when creating an event with a different venueId then t
     $otherVenue = Venue::factory()->create();
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/admin/publisher/events', validEventPayload(['venueId' => $otherVenue->id]))
+    $response = $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload(['venueId' => $otherVenue->id]))
         ->assertCreated();
 
     $event = Event::query()->findOrFail($response->json('data.id'));
@@ -113,7 +120,7 @@ it('given a published event when an edit is submitted then a revision is created
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Published, 'title' => 'Título Original']);
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/admin/publisher/events/{$event->id}", validEventPayload(['title' => 'Título Editado', 'venueId' => $venue->id]))
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", validEventPayload(['title' => 'Título Editado', 'venueId' => $venue->id]))
         ->assertOk()
         // The live Event row's own fields are byte-for-byte unchanged (PUBLISH-002/003's core guarantee).
         ->assertJsonPath('data.title', 'Título Original')
@@ -131,7 +138,7 @@ it('given a draft event when it is edited directly then its own fields are updat
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Draft, 'title' => 'Rascunho Original']);
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/admin/publisher/events/{$event->id}", validEventPayload(['action' => 'draft', 'title' => 'Rascunho Editado', 'venueId' => $venue->id]))
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", validEventPayload(['action' => 'draft', 'title' => 'Rascunho Editado', 'venueId' => $venue->id]))
         ->assertOk()
         ->assertJsonPath('data.title', 'Rascunho Editado')
         ->assertJsonPath('data.status', 'draft');
@@ -147,7 +154,7 @@ it('given a cancelled event when an edit is submitted then it conflicts', functi
     $event = Event::factory()->for($venue)->create(['status' => EventStatus::Cancelled]);
     Sanctum::actingAs($user);
 
-    $this->patchJson("/api/admin/publisher/events/{$event->id}", validEventPayload(['venueId' => $venue->id]))
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", validEventPayload(['venueId' => $venue->id]))
         ->assertStatus(409);
 });
 
@@ -173,7 +180,7 @@ it('given a description over 5000 characters when creating an event then it retu
     Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/admin/publisher/events', validEventPayload(['description' => str_repeat('a', 5001)]))
+    $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload(['description' => str_repeat('a', 5001)]))
         ->assertStatus(422)
         ->assertJsonValidationErrors(['description']);
 });
@@ -184,11 +191,142 @@ it('given a description containing HTML tags when creating an event then the tag
     $venue = Venue::factory()->create();
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/admin/publisher/events', validEventPayload([
+    $response = $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload([
         'venueId' => $venue->id,
         'description' => '<script>alert(1)</script>Uma noite de rock pesado.',
     ]))->assertCreated();
 
     $event = Event::query()->findOrFail($response->json('data.id'));
     expect($event->description)->toBe('alert(1)Uma noite de rock pesado.');
+});
+
+it('given a valid cover image file when creating an event then it is stored on s3 and the response resolves a public url', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $venue = Venue::factory()->create();
+    Sanctum::actingAs($user);
+
+    $response = $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload(['venueId' => $venue->id]))
+        ->assertCreated();
+
+    $event = Event::query()->findOrFail($response->json('data.id'));
+    expect($event->cover_image_path)->not->toBeNull();
+    Storage::disk('s3')->assertExists($event->cover_image_path);
+    expect($response->json('data.coverImageUrl'))->toBe(Storage::disk('s3')->url($event->cover_image_path));
+});
+
+it('given a draft event with a stored cover image when it is resaved without a new file then the existing cover image path is preserved', function () {
+    $user = User::factory()->create();
+    $venue = Venue::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create([
+        'status' => EventStatus::Draft,
+        'cover_image_path' => 'events/covers/existing.jpg',
+    ]);
+    Sanctum::actingAs($user);
+
+    $payload = validEventPayload(['action' => 'draft', 'venueId' => $venue->id]);
+    unset($payload['coverImage']);
+
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", $payload)->assertOk();
+
+    expect($event->fresh()->cover_image_path)->toBe('events/covers/existing.jpg');
+});
+
+it('given a published event with a stored cover image when an edit is submitted without a new file then it is accepted and the path is forwarded onto the revision', function () {
+    $user = User::factory()->create();
+    $venue = Venue::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create([
+        'status' => EventStatus::Published,
+        'cover_image_path' => 'events/covers/live.jpg',
+    ]);
+    Sanctum::actingAs($user);
+
+    $payload = validEventPayload(['title' => 'Novo Título', 'venueId' => $venue->id]);
+    unset($payload['coverImage']);
+
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", $payload)->assertOk();
+
+    expect($event->fresh()->cover_image_path)->toBe('events/covers/live.jpg')
+        ->and($event->fresh()->pendingRevision->cover_image_path)->toBe('events/covers/live.jpg');
+});
+
+it('given a submit with neither a new file nor an existing stored cover image when creating an event then it returns a field level error for coverImage', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    Sanctum::actingAs($user);
+
+    $payload = validEventPayload();
+    unset($payload['coverImage']);
+
+    $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', $payload)
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['coverImage']);
+});
+
+it('given a cover image with a disallowed mime type when creating an event then it returns a field level error', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $venue = Venue::factory()->create();
+    Sanctum::actingAs($user);
+
+    $payload = validEventPayload([
+        'venueId' => $venue->id,
+        'coverImage' => UploadedFile::fake()->create('cover.pdf', 100, 'application/pdf'),
+    ]);
+
+    $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', $payload)
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['coverImage']);
+
+    expect(Event::query()->count())->toBe(0);
+});
+
+it('given a cover image over the size limit when creating an event then it returns a field level error', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $venue = Venue::factory()->create();
+    Sanctum::actingAs($user);
+
+    $payload = validEventPayload([
+        'venueId' => $venue->id,
+        'coverImage' => UploadedFile::fake()->create('cover.jpg', 6000, 'image/jpeg'),
+    ]);
+
+    $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', $payload)
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['coverImage']);
+});
+
+it('given an s3 upload failure when creating an event then it returns a structured error and no event is created', function () {
+    $user = User::factory()->create();
+    Promoter::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $venue = Venue::factory()->create();
+    Sanctum::actingAs($user);
+
+    Storage::shouldReceive('disk')->with('s3')->andReturn(
+        tap(Mockery::mock(Filesystem::class), fn ($mock) => $mock->shouldReceive('putFile')->andThrow(new RuntimeException('s3 down')))
+    );
+
+    $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/publisher/events', validEventPayload(['venueId' => $venue->id]))
+        ->assertStatus(502)
+        ->assertJsonStructure(['message']);
+
+    expect(Event::query()->count())->toBe(0);
+});
+
+it('given an s3 upload failure when editing a published event then it returns a structured error and the live event/revision are unaffected', function () {
+    $user = User::factory()->create();
+    $venue = Venue::factory()->create(['user_id' => $user->id, 'verification_status' => VerificationStatus::Verified]);
+    $event = Event::factory()->for($venue)->create(['status' => EventStatus::Published, 'title' => 'Original']);
+    Sanctum::actingAs($user);
+
+    Storage::shouldReceive('disk')->with('s3')->andReturn(
+        tap(Mockery::mock(Filesystem::class), fn ($mock) => $mock->shouldReceive('putFile')->andThrow(new RuntimeException('s3 down')))
+    );
+
+    $this->withHeaders(['Accept' => 'application/json'])->patch("/api/admin/publisher/events/{$event->id}", validEventPayload(['venueId' => $venue->id]))
+        ->assertStatus(502);
+
+    expect($event->fresh()->title)->toBe('Original')
+        ->and($event->fresh()->pendingRevision)->toBeNull();
 });

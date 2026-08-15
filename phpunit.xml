@@ -21,16 +21,34 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="CACHE_DRIVER" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="PULSE_ENABLED" value="false"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
+        <!--
+            <server>, not just <env>: this suite is routinely run inside the qor-api-1 dev
+            container, whose docker-compose `env_file: ./api/.env` already exports real
+            process-level APP_ENV/DB_*/CACHE_DRIVER values (local/pgsql/file) into $_SERVER (PHP
+            CLI populates both $_ENV and $_SERVER from the OS environment). Dotenv's variable
+            repository reads $_SERVER *before* $_ENV/getenv(), so a plain `<env force="true">` —
+            which only ever writes putenv()/$_ENV — was silently shadowed there and the suite ran
+            against real Postgres with APP_ENV=local instead of the intended sqlite :memory: +
+            APP_ENV=testing. That in turn defeated RouteServiceProvider's
+            `app()->environment('testing') ? Limit::none()` escape hatch, letting the api
+            throttle (60/min) trip under a large enough test run. <server> entries set $_SERVER
+            directly and unconditionally, so they win regardless of the host process's real env.
+        -->
+        <server name="APP_ENV" value="testing"/>
+        <server name="BCRYPT_ROUNDS" value="4"/>
+        <server name="CACHE_DRIVER" value="array"/>
+        <server name="DB_CONNECTION" value="sqlite"/>
+        <server name="DB_DATABASE" value=":memory:"/>
+        <!-- Pinned so tests are deterministic regardless of the host container's real
+             FILESYSTEM_DISK (s3 in docker-compose) — code paths that store()/upload without
+             naming a disk explicitly (e.g. VerificationApplicationController's document upload)
+             rely on "local" being the default in tests. -->
+        <server name="FILESYSTEM_DISK" value="local"/>
+        <server name="MAIL_MAILER" value="array"/>
+        <server name="PULSE_ENABLED" value="false"/>
+        <server name="QUEUE_CONNECTION" value="sync"/>
+        <server name="SESSION_DRIVER" value="array"/>
+        <server name="TELESCOPE_ENABLED" value="false"/>
     </php>
     <!--
         NOTE: the Integration suite above is listed for testsuite selection only.

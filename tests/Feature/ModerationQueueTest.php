@@ -77,6 +77,27 @@ it('given a new submission and a published edit when the event queue is fetched 
         ->and($titleDiff['after'])->toBe('Editado');
 });
 
+it('given a published edit with a changed cover image path when the event queue diff is built then the renamed field surfaces the before/after keys', function () {
+    $venue = Venue::factory()->create(['verification_status' => VerificationStatus::Verified]);
+    $publishedEvent = Event::factory()->for($venue)->create([
+        'status' => EventStatus::Published,
+        'cover_image_path' => 'events/covers/old.jpg',
+    ]);
+    EventRevision::factory()->for($publishedEvent)->create([
+        'status' => EventRevisionStatus::PendingApproval,
+        'cover_image_path' => 'events/covers/new.jpg',
+    ]);
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $response = $this->getJson('/api/admin/moderation/event-queue')->assertOk();
+    $editItem = collect($response->json('data'))->keyBy('event.id')[(string) $publishedEvent->id];
+
+    $coverDiff = collect($editItem['diff'])->firstWhere('field', 'cover_image_path');
+    expect($coverDiff)->not->toBeNull()
+        ->and($coverDiff['before'])->toBe('events/covers/old.jpg')
+        ->and($coverDiff['after'])->toBe('events/covers/new.jpg');
+});
+
 it('given verified promoters and venues when the verified accounts list is fetched then both entity types appear', function () {
     $promoterUser = User::factory()->create();
     $promoter = Promoter::factory()->create(['user_id' => $promoterUser->id, 'verification_status' => VerificationStatus::Verified]);
