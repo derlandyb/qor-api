@@ -20,5 +20,9 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call(SuperAdminSeeder::class);
+
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(DemoDataSeeder::class);
+        }
     }
 }
