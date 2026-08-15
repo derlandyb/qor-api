@@ -28,6 +28,13 @@
             non-forcing <env> was a silent no-op that happened to fall through to the real
             (working) credentials; forcing wrong hardcoded ones would break real Postgres auth
             on any machine whose root .env deviates from docker-compose's bare defaults.
+
+            This means whoever runs this suite (docker-compose locally, or CI) is responsible for
+            exporting a real, working DB_* into the process environment beforehand — CI's
+            `.github/workflows/ci.yml` `integration-tests` job does this at the job-level `env:`
+            block, matching its Postgres service container's credentials. Omitting that env block
+            silently falls through to the app's default connection instead of failing loudly, so
+            don't remove it without replacing it with something equivalent.
         -->
         <server name="APP_ENV" value="testing"/>
         <server name="BCRYPT_ROUNDS" value="4"/>
