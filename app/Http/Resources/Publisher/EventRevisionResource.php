@@ -24,8 +24,8 @@ final class EventRevisionResource extends JsonResource
             // guard breaks when the key is omitted entirely instead of set to null.
             'price' => [
                 'isFree' => $this->is_free,
-                'min' => $this->price_min,
-                'max' => $this->price_max,
+                'min' => $this->price_min !== null ? (float) $this->price_min : null,
+                'max' => $this->price_max !== null ? (float) $this->price_max : null,
                 'currency' => $this->currency,
             ],
             'ageRating' => $this->when(! is_null($this->age_rating), fn () => $this->age_rating->value),
