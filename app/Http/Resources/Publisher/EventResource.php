@@ -31,8 +31,8 @@ final class EventResource extends JsonResource
             // form's `price === null` guard (it saw `undefined`, not `null`).
             'price' => [
                 'isFree' => $this->is_free,
-                'min' => $this->price_min,
-                'max' => $this->price_max,
+                'min' => $this->price_min !== null ? (float) $this->price_min : null,
+                'max' => $this->price_max !== null ? (float) $this->price_max : null,
                 'currency' => $this->currency,
             ],
             'ageRating' => $this->when(! is_null($this->age_rating), fn () => $this->age_rating->value),

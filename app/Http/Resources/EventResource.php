@@ -23,8 +23,8 @@ final class EventResource extends JsonResource
                 $this->is_free || ! is_null($this->price_min),
                 fn () => [
                     'isFree' => $this->is_free,
-                    'min' => $this->price_min,
-                    'max' => $this->price_max,
+                    'min' => $this->price_min !== null ? (float) $this->price_min : null,
+                    'max' => $this->price_max !== null ? (float) $this->price_max : null,
                     'currency' => $this->currency,
                 ],
             ),
