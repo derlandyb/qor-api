@@ -11,6 +11,7 @@
 */
 
 use Illuminate\Support\Facades\Route;
+use QOR\App\Http\Controllers\Api\AdminV1\AccountApprovalController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
 use QOR\App\Http\Controllers\Api\AdminV1\VenueController;
@@ -25,4 +26,9 @@ Route::prefix('events')->middleware(['auth:admin', 'guard.admin'])->group(functi
     Route::post('/', [EventController::class, 'store']);
     Route::post('/{id}/submit', [EventController::class, 'submit'])->whereNumber('id');
     Route::delete('/{id}', [EventController::class, 'destroy'])->whereNumber('id');
+});
+
+Route::prefix('approvals')->middleware(['auth:admin', 'guard.admin', 'guard.super-admin'])->group(function () {
+    Route::get('/accounts', [AccountApprovalController::class, 'index']);
+    Route::post('/accounts/{accountType}/{id}/decide', [AccountApprovalController::class, 'decide'])->whereNumber('id');
 });
