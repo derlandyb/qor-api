@@ -85,6 +85,8 @@ class EventController extends Controller
         $ageRating = $request->validated('age_rating');
         /** @var string|null $notes */
         $notes = $request->validated('notes');
+        /** @var list<int|string>|null $promoterIds */
+        $promoterIds = $request->validated('promoter_ids');
 
         $coverImage = null;
         if ($request->hasFile('cover_image')) {
@@ -108,6 +110,7 @@ class EventController extends Controller
             capacity: $capacity !== null ? (int) $capacity : null,
             ageRating: $ageRating,
             notes: $notes,
+            promoterIds: $promoterIds !== null ? array_map(fn ($id) => (int) $id, $promoterIds) : [],
         );
 
         return response()->json(['data' => $this->eventToArray($event)], 201);
@@ -170,6 +173,8 @@ class EventController extends Controller
         $ageRating = $request->validated('age_rating') ?? null;
         /** @var string|null $notes */
         $notes = $request->validated('notes') ?? null;
+        /** @var list<int|string>|null $promoterIds */
+        $promoterIds = $request->validated('promoter_ids') ?? null;
 
         $coverImage = null;
         if ($request->hasFile('cover_image')) {
@@ -195,6 +200,7 @@ class EventController extends Controller
             capacity: $capacity !== null ? (int) $capacity : null,
             ageRating: $ageRating,
             notes: $notes,
+            promoterIds: $promoterIds !== null ? array_map(fn ($pid) => (int) $pid, $promoterIds) : null,
         );
 
         return response()->json(['data' => $this->eventToArray($event)]);
@@ -347,6 +353,8 @@ class EventController extends Controller
      */
     private function eventToArray(Event $event): array
     {
+        $promoters = $event->id !== null ? $this->promoters->findTaggedForEvent($event->id) : [];
+
         return [
             'id' => $event->id,
             'title' => $event->title,
@@ -365,6 +373,14 @@ class EventController extends Controller
             'rejection_feedback' => $event->rejectionFeedback,
             'created_by_type' => $event->createdByType->value,
             'created_by_id' => $event->createdById,
+            'promoters' => array_map(fn (Promoter $promoter) => [
+                'id' => $promoter->id,
+                'name' => $promoter->name,
+                'contact_phone' => $promoter->contactPhone,
+                'contact_email' => $promoter->contactEmail,
+                'instagram' => $promoter->instagram,
+                'tiktok' => $promoter->tiktok,
+            ], $promoters),
         ];
     }
 }

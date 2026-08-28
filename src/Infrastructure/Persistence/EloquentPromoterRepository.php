@@ -39,6 +39,27 @@ class EloquentPromoterRepository implements PromoterRepository
         return $promoters;
     }
 
+    public function tagEvent(int $eventId, array $promoterIds): void
+    {
+        DB::table('event_promoter')->where('event_id', $eventId)->delete();
+
+        if ($promoterIds === []) {
+            return;
+        }
+
+        $now = now();
+        $rows = array_map(
+            static fn (int $promoterId): array => [
+                'event_id' => $eventId,
+                'promoter_id' => $promoterId,
+                'tagged_at' => $now,
+            ],
+            $promoterIds,
+        );
+
+        DB::table('event_promoter')->insert($rows);
+    }
+
     public function save(Promoter $promoter): Promoter
     {
         $model = $promoter->id !== null ? PromoterModel::findOrFail($promoter->id) : new PromoterModel();

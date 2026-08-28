@@ -322,4 +322,86 @@ class EventControllerTest extends TestCase
         $response->assertStatus(422);
         $this->assertDatabaseHas('events', ['id' => $event->id, 'status' => 'draft']);
     }
+
+    public function test_GIVEN_an_approved_venue_organizer_and_valid_promoter_ids_WHEN_creating_an_event_THEN_the_response_includes_tagged_promoters(): void
+    {
+        $this->actingAsVenueAdmin();
+        $promoter = PromoterModel::factory()->approved()->create([
+            'name' => 'Produtora Legal',
+            'contact_phone' => '27988887777',
+            'contact_email' => 'contato@produtoralegal.com',
+            'instagram' => '@produtoralegal',
+            'tiktok' => '@produtoralegal',
+        ]);
+
+        $response = $this->postJson('/api/admin/v1/events', $this->validPayload([
+            'promoter_ids' => [$promoter->id],
+        ]));
+
+        $response->assertStatus(201)
+            ->assertJsonCount(1, 'data.promoters')
+            ->assertJsonPath('data.promoters.0.id', $promoter->id)
+            ->assertJsonPath('data.promoters.0.name', 'Produtora Legal')
+            ->assertJsonPath('data.promoters.0.contact_phone', '27988887777')
+            ->assertJsonPath('data.promoters.0.contact_email', 'contato@produtoralegal.com')
+            ->assertJsonPath('data.promoters.0.instagram', '@produtoralegal')
+            ->assertJsonPath('data.promoters.0.tiktok', '@produtoralegal');
+
+        $this->assertDatabaseHas('event_promoter', [
+            'event_id' => $response->json('data.id'),
+            'promoter_id' => $promoter->id,
+        ]);
+    }
+
+    public function test_GIVEN_a_draft_event_owned_by_the_organizer_WHEN_editing_to_add_promoter_tags_THEN_the_response_includes_them(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+        $genreId = $this->genreId();
+        $event = EventModel::factory()->create([
+            'created_by_type' => 'venue_admin',
+            'created_by_id' => $venue->id,
+            'genre_id' => $genreId,
+            'status' => 'draft',
+        ]);
+        $promoter = PromoterModel::factory()->approved()->create();
+
+        $response = $this->patchJson("/api/admin/v1/events/{$event->id}", [
+            'promoter_ids' => [$promoter->id],
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.promoters')
+            ->assertJsonPath('data.promoters.0.id', $promoter->id);
+        $this->assertDatabaseHas('event_promoter', [
+            'event_id' => $event->id,
+            'promoter_id' => $promoter->id,
+        ]);
+    }
+
+    public function test_GIVEN_a_promoter_tagged_but_not_the_creator_WHEN_attempting_to_edit_the_event_THEN_it_returns_403(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+        $genreId = $this->genreId();
+        $event = EventModel::factory()->create([
+            'created_by_type' => 'venue_admin',
+            'created_by_id' => $venue->id,
+            'genre_id' => $genreId,
+            'status' => 'draft',
+        ]);
+        $taggedPromoter = PromoterModel::factory()->approved()->create();
+        DB::table('event_promoter')->insert([
+            'event_id' => $event->id,
+            'promoter_id' => $taggedPromoter->id,
+            'tagged_at' => now(),
+        ]);
+
+        // Log the tagged promoter's own admin user in — tagging is contact-display
+        // only and grants no edit rights (ADMIN-24).
+        $taggedPromoterAdmin = AdminUserModel::find($taggedPromoter->user_id);
+        Sanctum::actingAs($taggedPromoterAdmin, ['*'], 'admin');
+
+        $response = $this->patchJson("/api/admin/v1/events/{$event->id}", ['title' => 'Tentativa de Edição']);
+
+        $response->assertStatus(403);
+    }
 }

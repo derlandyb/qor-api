@@ -5,10 +5,12 @@ namespace QOR\App\Domain\Event\UseCase;
 use DateTimeImmutable;
 use DomainException;
 use InvalidArgumentException;
+use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Promoter\Promoter;
+use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\UploadableFile;
@@ -19,9 +21,13 @@ final class EditEvent
     public function __construct(
         private readonly EventRepository $events,
         private readonly FileUploadPort $fileUpload,
+        private readonly PromoterRepository $promoters,
     ) {
     }
 
+    /**
+     * @param ?list<int> $promoterIds null = tagging untouched; array = full replace
+     */
     public function execute(
         int $eventId,
         Venue|Promoter $organizer,
@@ -37,6 +43,7 @@ final class EditEvent
         ?int $capacity = null,
         ?string $ageRating = null,
         ?string $notes = null,
+        ?array $promoterIds = null,
     ): Event {
         $event = $this->events->findById($eventId);
 
@@ -70,7 +77,10 @@ final class EditEvent
                 rejectionFeedback: $event->rejectionFeedback,
             );
 
-            return $this->events->save($updated);
+            $savedEvent = $this->events->save($updated);
+            $this->tagPromoters($organizer, $savedEvent, $promoterIds);
+
+            return $savedEvent;
         }
 
         if ($event->status === EventStatus::Published) {
@@ -109,9 +119,31 @@ final class EditEvent
                 rejectionFeedback: $event->rejectionFeedback,
             );
 
-            return $this->events->save($updated);
+            $savedEvent = $this->events->save($updated);
+            $this->tagPromoters($organizer, $savedEvent, $promoterIds);
+
+            return $savedEvent;
         }
 
         throw new DomainException('Este evento não pode ser editado no status atual.');
+    }
+
+    /**
+     * @param ?list<int> $promoterIds
+     */
+    private function tagPromoters(Venue|Promoter $organizer, Event $event, ?array $promoterIds): void
+    {
+        if ($promoterIds === null || ! $organizer instanceof Venue || $event->id === null) {
+            return;
+        }
+
+        foreach ($promoterIds as $promoterId) {
+            $promoter = $this->promoters->findById($promoterId);
+            if ($promoter === null || $promoter->approvalStatus !== ApprovalStatus::Approved) {
+                throw new InvalidArgumentException('Promotor inválido ou não aprovado.');
+            }
+        }
+
+        $this->promoters->tagEvent($event->id, $promoterIds);
     }
 }

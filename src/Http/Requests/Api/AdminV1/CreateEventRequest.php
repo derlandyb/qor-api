@@ -36,6 +36,8 @@ class CreateEventRequest extends FormRequest
             'age_rating' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'cover_image' => ['nullable', 'file', 'image'],
+            'promoter_ids' => ['nullable', 'array'],
+            'promoter_ids.*' => ['integer', 'exists:promoters,id'],
         ];
     }
 
@@ -63,6 +65,9 @@ class CreateEventRequest extends FormRequest
             'capacity.integer' => 'Capacidade inválida.',
             'cover_image.file' => 'Envie um arquivo de imagem.',
             'cover_image.image' => 'Envie um arquivo de imagem.',
+            'promoter_ids.array' => 'Lista de promotores inválida.',
+            'promoter_ids.*.integer' => 'Um dos promotores selecionados é inválido.',
+            'promoter_ids.*.exists' => 'Um dos promotores selecionados é inválido.',
         ];
     }
 }
