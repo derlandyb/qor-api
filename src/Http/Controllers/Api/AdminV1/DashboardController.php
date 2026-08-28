@@ -4,18 +4,17 @@ namespace QOR\App\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Http\Controllers\Controller;
+use QOR\App\Http\Support\OrganizerIdentityResolver;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
-use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
-use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 
 class DashboardController extends Controller
 {
     public function __construct(
         private readonly EventRepository $events,
+        private readonly OrganizerIdentityResolver $organizerIdentityResolver,
     ) {
     }
 
@@ -24,31 +23,13 @@ class DashboardController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        [$createdByType, $createdById] = $this->resolveOrganizerIdentity($admin);
+        [$createdByType, $createdById] = $this->organizerIdentityResolver->resolve($admin);
 
         $events = $this->events->findByCreator($createdByType, $createdById);
 
         return response()->json([
             'data' => array_map(fn (Event $event) => $this->eventToArray($event), $events),
         ]);
-    }
-
-    /**
-     * @return array{0: EventCreatedByType, 1: int}
-     */
-    private function resolveOrganizerIdentity(AdminUserModel $admin): array
-    {
-        $venue = VenueModel::where('venue_admin_user_id', $admin->id)->first();
-        if ($venue !== null) {
-            return [EventCreatedByType::VenueAdmin, (int) $venue->id];
-        }
-
-        $promoter = PromoterModel::where('user_id', $admin->id)->first();
-        if ($promoter !== null) {
-            return [EventCreatedByType::Promoter, (int) $promoter->id];
-        }
-
-        abort(403, 'Conta não é uma Venue ou Promoter registrada.');
     }
 
     /**
