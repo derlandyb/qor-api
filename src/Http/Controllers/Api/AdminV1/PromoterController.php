@@ -5,14 +5,19 @@ namespace QOR\App\Http\Controllers\Api\AdminV1;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use QOR\App\Domain\Promoter\Promoter;
+use QOR\App\Domain\Promoter\UseCase\EditPromoterProfile;
 use QOR\App\Domain\Promoter\UseCase\RegisterPromoter;
 use QOR\App\Http\Controllers\Controller;
 use QOR\App\Http\Requests\Api\AdminV1\RegisterPromoterRequest;
+use QOR\App\Http\Requests\Api\AdminV1\UpdatePromoterProfileRequest;
+use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
 
 class PromoterController extends Controller
 {
     public function __construct(
         private readonly RegisterPromoter $registerPromoter,
+        private readonly EditPromoterProfile $editPromoterProfile,
     ) {
     }
 
@@ -33,6 +38,28 @@ class PromoterController extends Controller
         );
 
         return response()->json(['data' => $this->promoterToArray($promoter)], 201);
+    }
+
+    public function update(UpdatePromoterProfileRequest $request): JsonResponse
+    {
+        /** @var AdminUserModel $admin */
+        $admin = $request->user();
+
+        $promoterModel = PromoterModel::where('user_id', $admin->id)->first();
+        if ($promoterModel === null) {
+            return response()->json(['message' => 'Promoter não encontrado.'], 404);
+        }
+
+        $promoter = $this->editPromoterProfile->execute(
+            promoterId: (int) $promoterModel->id,
+            name: $this->nullableField($request, 'name'),
+            contactPhone: $this->nullableField($request, 'contact_phone'),
+            contactEmail: $this->nullableField($request, 'contact_email'),
+            instagram: $this->nullableField($request, 'instagram'),
+            tiktok: $this->nullableField($request, 'tiktok'),
+        );
+
+        return response()->json(['data' => $this->promoterToArray($promoter)]);
     }
 
     private function field(FormRequest $request, string $key): string

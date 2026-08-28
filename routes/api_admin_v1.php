@@ -22,6 +22,11 @@ Route::middleware('throttle:qor-auth')->group(function () {
     Route::post('/promoters/register', [PromoterController::class, 'register']);
 });
 
+Route::middleware(['auth:admin', 'guard.admin'])->group(function () {
+    Route::patch('/venues/me', [VenueController::class, 'update']);
+    Route::patch('/promoters/me', [PromoterController::class, 'update']);
+});
+
 Route::prefix('events')->middleware(['auth:admin', 'guard.admin'])->group(function () {
     Route::get('/', [EventController::class, 'index']);
     Route::post('/', [EventController::class, 'store']);

@@ -4,7 +4,10 @@ namespace Tests\Feature\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Sanctum;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
+use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
 use Tests\TestCase;
 
 class PromoterControllerTest extends TestCase
@@ -21,6 +24,20 @@ class PromoterControllerTest extends TestCase
         Route::middleware('api')
             ->prefix('api/admin/v1')
             ->post('promoters', [PromoterController::class, 'register']);
+
+        Route::middleware(['api', 'auth:admin', 'guard.admin'])
+            ->prefix('api/admin/v1')
+            ->patch('promoters/me', [PromoterController::class, 'update']);
+    }
+
+    private function actingAsPromoter(): PromoterModel
+    {
+        $admin = AdminUserModel::factory()->create();
+        $promoter = PromoterModel::factory()->approved()->create(['user_id' => $admin->id]);
+
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        return $promoter;
     }
 
     private function validPayload(array $overrides = []): array
@@ -95,5 +112,34 @@ class PromoterControllerTest extends TestCase
         $response = $this->postJson('/api/admin/v1/promoters', $payload);
 
         $response->assertStatus(422)->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_GIVEN_an_authenticated_promoter_WHEN_editing_the_own_profile_THEN_the_provided_fields_are_persisted(): void
+    {
+        $promoter = $this->actingAsPromoter();
+
+        $response = $this->patchJson('/api/admin/v1/promoters/me', [
+            'name' => 'Produtora Renovada',
+            'instagram' => '@novoinsta',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $promoter->id)
+            ->assertJsonPath('data.name', 'Produtora Renovada')
+            ->assertJsonPath('data.instagram', '@novoinsta')
+            ->assertJsonPath('data.contact_phone', $promoter->contact_phone);
+
+        $this->assertDatabaseHas('promoters', [
+            'id' => $promoter->id,
+            'name' => 'Produtora Renovada',
+            'instagram' => '@novoinsta',
+        ]);
+    }
+
+    public function test_GIVEN_no_authenticated_admin_WHEN_editing_a_promoter_profile_THEN_it_is_rejected(): void
+    {
+        $response = $this->patchJson('/api/admin/v1/promoters/me', ['name' => 'Nome Qualquer']);
+
+        $response->assertStatus(401);
     }
 }

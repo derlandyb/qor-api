@@ -3,8 +3,13 @@
 namespace Tests\Feature\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 use QOR\App\Http\Controllers\Api\AdminV1\VenueController;
+use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
 
 class VenueControllerTest extends TestCase
@@ -21,6 +26,20 @@ class VenueControllerTest extends TestCase
         Route::middleware('api')
             ->prefix('api/admin/v1')
             ->post('venues', [VenueController::class, 'register']);
+
+        Route::middleware(['api', 'auth:admin', 'guard.admin'])
+            ->prefix('api/admin/v1')
+            ->patch('venues/me', [VenueController::class, 'update']);
+    }
+
+    private function actingAsVenueAdmin(): VenueModel
+    {
+        $admin = AdminUserModel::factory()->create();
+        $venue = VenueModel::factory()->approved()->create(['venue_admin_user_id' => $admin->id]);
+
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        return $venue;
     }
 
     private function validPayload(array $overrides = []): array
@@ -92,5 +111,47 @@ class VenueControllerTest extends TestCase
         $response = $this->postJson('/api/admin/v1/venues', $payload);
 
         $response->assertStatus(422)->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_GIVEN_an_authenticated_venue_admin_WHEN_editing_the_own_profile_THEN_the_provided_fields_are_persisted(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+
+        $response = $this->patchJson('/api/admin/v1/venues/me', [
+            'name' => 'Casa de Show Renovada',
+            'contact_phone' => '27988887777',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $venue->id)
+            ->assertJsonPath('data.name', 'Casa de Show Renovada')
+            ->assertJsonPath('data.contact_phone', '27988887777')
+            ->assertJsonPath('data.address', $venue->address);
+
+        $this->assertDatabaseHas('venues', [
+            'id' => $venue->id,
+            'name' => 'Casa de Show Renovada',
+            'contact_phone' => '27988887777',
+            'address' => $venue->address,
+        ]);
+    }
+
+    public function test_GIVEN_an_image_upload_WHEN_editing_the_own_profile_THEN_it_persists_the_stored_url(): void
+    {
+        Storage::fake('s3');
+        $this->actingAsVenueAdmin();
+        $file = UploadedFile::fake()->image('logo.jpg', 800, 600);
+
+        $response = $this->patch('/api/admin/v1/venues/me', ['image' => $file]);
+
+        $response->assertStatus(200);
+        $this->assertNotNull($response->json('data.image_url'));
+    }
+
+    public function test_GIVEN_no_authenticated_admin_WHEN_editing_a_venue_profile_THEN_it_is_rejected(): void
+    {
+        $response = $this->patchJson('/api/admin/v1/venues/me', ['name' => 'Nome Qualquer']);
+
+        $response->assertStatus(401);
     }
 }
