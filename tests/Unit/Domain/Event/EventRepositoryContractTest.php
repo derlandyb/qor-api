@@ -31,6 +31,14 @@ final class InMemoryEventRepository implements EventRepository
         return $this->events[$id] ?? null;
     }
 
+    public function findByCreator(EventCreatedByType $createdByType, int $createdById): array
+    {
+        return array_values(array_filter(
+            $this->events,
+            fn (Event $event) => $event->createdByType === $createdByType && $event->createdById === $createdById,
+        ));
+    }
+
     public function save(Event $event): Event
     {
         $id = $event->id ?? $this->nextId++;

@@ -124,4 +124,59 @@ class EloquentEventRepositoryTest extends TestCase
 
         $this->assertNull($repository->findById($model->id));
     }
+
+    public function test_GIVEN_events_from_different_creators_WHEN_finding_by_creator_THEN_only_that_creators_events_are_returned(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'created_by_type' => EventCreatedByType::VenueAdmin->value,
+            'created_by_id' => 10,
+        ]);
+        EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'created_by_type' => EventCreatedByType::VenueAdmin->value,
+            'created_by_id' => 20,
+        ]);
+        EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'created_by_type' => EventCreatedByType::Promoter->value,
+            'created_by_id' => 10,
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $events = $repository->findByCreator(EventCreatedByType::VenueAdmin, 10);
+
+        $this->assertCount(1, $events);
+        $this->assertSame(EventCreatedByType::VenueAdmin, $events[0]->createdByType);
+        $this->assertSame(10, $events[0]->createdById);
+    }
+
+    public function test_GIVEN_a_creator_with_multiple_events_WHEN_finding_by_creator_THEN_they_are_ordered_deterministically_by_starts_at_descending(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        $earlier = EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'created_by_type' => EventCreatedByType::VenueAdmin->value,
+            'created_by_id' => 30,
+            'starts_at' => now()->addDays(1),
+        ]);
+        $later = EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'created_by_type' => EventCreatedByType::VenueAdmin->value,
+            'created_by_id' => 30,
+            'starts_at' => now()->addDays(5),
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $events = $repository->findByCreator(EventCreatedByType::VenueAdmin, 30);
+
+        $this->assertCount(2, $events);
+        $this->assertSame($later->id, $events[0]->id);
+        $this->assertSame($earlier->id, $events[1]->id);
+    }
 }

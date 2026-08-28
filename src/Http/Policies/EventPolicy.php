@@ -41,6 +41,11 @@ class EventPolicy
         return $this->update($admin, $event, $organizer);
     }
 
+    public function delete(AdminUserModel $admin, EventModel $event, VenueModel|PromoterModel $organizer): bool
+    {
+        return $this->update($admin, $event, $organizer);
+    }
+
     private function isCreatorOf(EventModel $event, VenueModel|PromoterModel $organizer): bool
     {
         $expectedType = $organizer instanceof VenueModel
