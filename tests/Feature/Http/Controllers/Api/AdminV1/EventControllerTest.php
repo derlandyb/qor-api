@@ -151,6 +151,29 @@ class EventControllerTest extends TestCase
             ->assertJsonPath('data.0.title', 'Meu Evento');
     }
 
+    public function test_GIVEN_multiple_events_with_distinct_tagged_promoters_WHEN_listing_THEN_each_event_shows_only_its_own_promoters(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+        $genreId = $this->genreId();
+
+        $eventA = EventModel::factory()->create(['created_by_type' => 'venue_admin', 'created_by_id' => $venue->id, 'genre_id' => $genreId]);
+        $eventB = EventModel::factory()->create(['created_by_type' => 'venue_admin', 'created_by_id' => $venue->id, 'genre_id' => $genreId]);
+        $promoterA = PromoterModel::factory()->approved()->create(['name' => 'Produtora A']);
+        $promoterB = PromoterModel::factory()->approved()->create(['name' => 'Produtora B']);
+
+        DB::table('event_promoter')->insert([
+            ['event_id' => $eventA->id, 'promoter_id' => $promoterA->id, 'tagged_at' => now()],
+            ['event_id' => $eventB->id, 'promoter_id' => $promoterB->id, 'tagged_at' => now()],
+        ]);
+
+        $response = $this->getJson('/api/admin/v1/events');
+
+        $response->assertStatus(200);
+        $byId = collect($response->json('data'))->keyBy('id');
+        $this->assertSame('Produtora A', $byId[$eventA->id]['promoters'][0]['name']);
+        $this->assertSame('Produtora B', $byId[$eventB->id]['promoters'][0]['name']);
+    }
+
     public function test_GIVEN_a_draft_event_owned_by_the_organizer_WHEN_submitting_for_review_THEN_it_transitions_to_pending_review(): void
     {
         $venue = $this->actingAsVenueAdmin();

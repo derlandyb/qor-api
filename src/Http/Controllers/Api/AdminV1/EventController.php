@@ -24,6 +24,7 @@ use QOR\App\Http\Controllers\Controller;
 use QOR\App\Http\Policies\EventPolicy;
 use QOR\App\Http\Requests\Api\AdminV1\CreateEventRequest;
 use QOR\App\Http\Requests\Api\AdminV1\EditEventRequest;
+use QOR\App\Http\Support\OrganizerIdentityResolver;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
@@ -41,6 +42,7 @@ class EventController extends Controller
         private readonly VenueRepository $venues,
         private readonly PromoterRepository $promoters,
         private readonly EventPolicy $policy,
+        private readonly OrganizerIdentityResolver $organizerIdentityResolver,
     ) {
     }
 
@@ -49,12 +51,18 @@ class EventController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        [$createdByType, $createdById] = $this->resolveOrganizerIdentity($admin);
+        [$createdByType, $createdById] = $this->organizerIdentityResolver->resolve($admin);
 
         $events = $this->events->findByCreator($createdByType, $createdById);
 
+        $eventIds = array_values(array_filter(array_map(fn (Event $event) => $event->id, $events)));
+        $taggedByEventId = $this->promoters->findTaggedForEvents($eventIds);
+
         return response()->json([
-            'data' => array_map(fn (Event $event) => $this->eventToArray($event), $events),
+            'data' => array_map(
+                fn (Event $event) => $this->eventToArray($event, $taggedByEventId[$event->id] ?? []),
+                $events,
+            ),
         ]);
     }
 
@@ -278,29 +286,11 @@ class EventController extends Controller
     }
 
     /**
-     * @return array{0: EventCreatedByType, 1: int}
-     */
-    private function resolveOrganizerIdentity(AdminUserModel $admin): array
-    {
-        $venue = VenueModel::where('venue_admin_user_id', $admin->id)->first();
-        if ($venue !== null) {
-            return [EventCreatedByType::VenueAdmin, (int) $venue->id];
-        }
-
-        $promoter = PromoterModel::where('user_id', $admin->id)->first();
-        if ($promoter !== null) {
-            return [EventCreatedByType::Promoter, (int) $promoter->id];
-        }
-
-        abort(403, 'Conta não é uma Venue ou Promoter registrada.');
-    }
-
-    /**
      * @return array{0: EventCreatedByType, 1: Venue|Promoter}
      */
     private function resolveOrganizer(AdminUserModel $admin): array
     {
-        [$createdByType, $createdById] = $this->resolveOrganizerIdentity($admin);
+        [$createdByType, $createdById] = $this->organizerIdentityResolver->resolve($admin);
 
         if ($createdByType === EventCreatedByType::VenueAdmin) {
             $venue = $this->venues->findById($createdById);
@@ -349,11 +339,14 @@ class EventController extends Controller
     }
 
     /**
+     * @param ?list<Promoter> $promoters pass to reuse an already-fetched batch (e.g. from index()); omit to fetch for a single event
      * @return array<string, mixed>
      */
-    private function eventToArray(Event $event): array
+    private function eventToArray(Event $event, ?array $promoters = null): array
     {
-        $promoters = $event->id !== null ? $this->promoters->findTaggedForEvent($event->id) : [];
+        if ($promoters === null) {
+            $promoters = $event->id !== null ? $this->promoters->findTaggedForEvent($event->id) : [];
+        }
 
         return [
             'id' => $event->id,

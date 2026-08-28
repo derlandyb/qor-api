@@ -39,25 +39,52 @@ class EloquentPromoterRepository implements PromoterRepository
         return $promoters;
     }
 
-    public function tagEvent(int $eventId, array $promoterIds): void
+    public function findTaggedForEvents(array $eventIds): array
     {
-        DB::table('event_promoter')->where('event_id', $eventId)->delete();
-
-        if ($promoterIds === []) {
-            return;
+        if ($eventIds === []) {
+            return [];
         }
 
-        $now = now();
-        $rows = array_map(
-            static fn (int $promoterId): array => [
-                'event_id' => $eventId,
-                'promoter_id' => $promoterId,
-                'tagged_at' => $now,
-            ],
-            $promoterIds,
-        );
+        $links = DB::table('event_promoter')
+            ->whereIn('event_id', $eventIds)
+            ->orderBy('tagged_at')
+            ->get(['event_id', 'promoter_id']);
 
-        DB::table('event_promoter')->insert($rows);
+        $promoterIds = $links->pluck('promoter_id')->unique()->values();
+        $models = PromoterModel::whereIn('id', $promoterIds)->get()->keyBy('id');
+
+        $result = [];
+        foreach ($links as $link) {
+            $model = $models->get($link->promoter_id);
+            if ($model !== null) {
+                $result[$link->event_id][] = $this->toDomain($model);
+            }
+        }
+
+        return $result;
+    }
+
+    public function tagEvent(int $eventId, array $promoterIds): void
+    {
+        DB::transaction(function () use ($eventId, $promoterIds): void {
+            DB::table('event_promoter')->where('event_id', $eventId)->delete();
+
+            if ($promoterIds === []) {
+                return;
+            }
+
+            $now = now();
+            $rows = array_map(
+                static fn (int $promoterId): array => [
+                    'event_id' => $eventId,
+                    'promoter_id' => $promoterId,
+                    'tagged_at' => $now,
+                ],
+                $promoterIds,
+            );
+
+            DB::table('event_promoter')->insert($rows);
+        });
     }
 
     public function save(Promoter $promoter): Promoter
