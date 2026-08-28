@@ -35,6 +35,28 @@ class EloquentUserRepositoryTest extends TestCase
         $this->assertSoftDeleted('users', ['id' => $model->id]);
     }
 
+    public function test_GIVEN_a_user_with_pii_WHEN_deleting_THEN_the_personal_data_is_scrubbed_not_just_soft_deleted(): void
+    {
+        $model = UserModel::factory()->create([
+            'name' => 'Ana Silva',
+            'email' => 'ana@example.com',
+            'phone' => '27999999999',
+            'google_id' => 'google-123',
+            'profile_picture_url' => 'profile-pictures/ana.jpg',
+        ]);
+        $repository = new EloquentUserRepository();
+
+        $repository->delete($model->id);
+
+        $scrubbed = UserModel::withTrashed()->findOrFail($model->id);
+        $this->assertNotSame('Ana Silva', $scrubbed->name);
+        $this->assertNotSame('ana@example.com', $scrubbed->email);
+        $this->assertNull($scrubbed->phone);
+        $this->assertNull($scrubbed->google_id);
+        $this->assertNull($scrubbed->profile_picture_url);
+        $this->assertNull($scrubbed->password_hash);
+    }
+
     public function test_GIVEN_a_new_domain_user_WHEN_saving_THEN_it_is_persisted_and_assigned_an_id(): void
     {
         $user = new User(

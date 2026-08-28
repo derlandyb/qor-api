@@ -3,6 +3,8 @@
 namespace QOR\App\Infrastructure\Persistence\Eloquent;
 
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -12,11 +14,12 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * @property-read \Illuminate\Support\Carbon $birthdate
  * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property string|null $pending_email
  */
-class UserModel extends Authenticatable
+class UserModel extends Authenticatable implements MustVerifyEmailContract
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, MustVerifyEmail, Notifiable, SoftDeletes;
 
     protected $table = 'users';
 
@@ -28,6 +31,7 @@ class UserModel extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'pending_email',
         'password_hash',
         'google_id',
         'phone',

@@ -104,14 +104,17 @@ return [
         'fans' => [
             'provider' => 'fans',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            // Kept in lockstep with qor.auth.password_reset_ttl_minutes via the
+            // same env var — config/qor.php isn't guaranteed to be loaded yet
+            // when this file is evaluated, so this reads the env var directly.
+            'expire' => (int) env('QOR_PASSWORD_RESET_TTL_MINUTES', 60),
             'throttle' => 60,
         ],
 
         'admins' => [
             'provider' => 'admins',
             'table' => 'password_reset_tokens',
-            'expire' => 60,
+            'expire' => (int) env('QOR_PASSWORD_RESET_TTL_MINUTES', 60),
             'throttle' => 60,
         ],
     ],

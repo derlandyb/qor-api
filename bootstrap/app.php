@@ -9,7 +9,7 @@ use QOR\App\Http\Middleware\EnsureAdminIdentity;
 use QOR\App\Http\Middleware\EnsureFanIdentity;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
@@ -36,4 +36,23 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json(['message' => 'Recurso não encontrado.'], 404);
             }
         });
+
+        // Domain-layer business-rule violations (duplicate email, weak
+        // password, expired link, ...) surface as a generic 422 with the
+        // use case's own pt-BR message. Controllers catch and remap the few
+        // exceptions that need a different status (e.g. invalid credentials).
+        $exceptions->render(function (InvalidArgumentException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        });
     })->create();
+
+// app/ was renamed to src/ (ARCHITECTURE.md §8.6) — without this,
+// Illuminate\Foundation\Application::getNamespace() can't match src/ against
+// composer.json's QOR\App\ PSR-4 mapping (it only checks the default
+// app_path()) and throws "Unable to detect application namespace" the first
+// time anything needs it (e.g. Mail Markdown component resolution).
+$app->useAppPath($app->basePath('src'));
+
+return $app;

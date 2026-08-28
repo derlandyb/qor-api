@@ -29,6 +29,7 @@ class EloquentUserRepository implements UserRepository
         $model->fill([
             'name' => $user->name,
             'email' => $user->email,
+            'pending_email' => $user->pendingEmail,
             'password_hash' => $user->passwordHash,
             'google_id' => $user->googleId,
             'phone' => $user->phone,
@@ -47,7 +48,27 @@ class EloquentUserRepository implements UserRepository
 
     public function delete(int $id): void
     {
-        UserModel::destroy($id);
+        $model = UserModel::find($id);
+
+        if ($model === null) {
+            return;
+        }
+
+        // LGPD Art. 18 "right to be forgotten" (AUTH-25): soft-delete + PII
+        // scrub, not a hard delete — preserves referential integrity for any
+        // dependent rows while ensuring no personal data remains readable
+        // (ARCHITECTURE.md §7, auth-fan-profile/design.md).
+        $model->forceFill([
+            'name' => 'Usuário removido',
+            'email' => "deleted-user-{$id}@removed.qor.app",
+            'pending_email' => null,
+            'password_hash' => null,
+            'google_id' => null,
+            'phone' => null,
+            'profile_picture_url' => null,
+        ])->save();
+
+        $model->delete();
     }
 
     private function toDomain(UserModel $model): User
@@ -62,6 +83,7 @@ class EloquentUserRepository implements UserRepository
             phone: $model->phone,
             profilePictureUrl: $model->profile_picture_url,
             emailVerifiedAt: $model->email_verified_at?->toDateTimeImmutable(),
+            pendingEmail: $model->pending_email,
         );
     }
 }

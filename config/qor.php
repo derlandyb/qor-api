@@ -33,6 +33,16 @@ return [
             'numbers' => true,
         ],
         'password_reset_ttl_minutes' => (int) env('QOR_PASSWORD_RESET_TTL_MINUTES', 60),
+        'email_verification_ttl_minutes' => (int) env('QOR_EMAIL_VERIFICATION_TTL_MINUTES', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Legal / consent (ARCHITECTURE.md §7)
+    |--------------------------------------------------------------------------
+    */
+    'legal' => [
+        'policy_version' => env('QOR_LEGAL_POLICY_VERSION', '1.0'),
     ],
 
     /*
