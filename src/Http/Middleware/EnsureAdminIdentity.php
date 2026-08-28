@@ -5,7 +5,7 @@ namespace QOR\App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use QOR\App\Models\AdminUser;
+use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -16,7 +16,7 @@ class EnsureAdminIdentity
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! Auth::guard('admin')->user() instanceof AdminUser) {
+        if (! Auth::guard('admin')->user() instanceof AdminUserModel) {
             abort(401, 'Não autenticado.');
         }
 

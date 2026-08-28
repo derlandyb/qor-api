@@ -1,0 +1,55 @@
+<?php
+
+namespace QOR\App\Infrastructure\Persistence;
+
+use QOR\App\Domain\Promoter\Promoter;
+use QOR\App\Domain\Promoter\PromoterRepository;
+use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
+
+class EloquentPromoterRepository implements PromoterRepository
+{
+    public function findById(int $id): ?Promoter
+    {
+        $model = PromoterModel::find($id);
+
+        return $model ? $this->toDomain($model) : null;
+    }
+
+    public function save(Promoter $promoter): Promoter
+    {
+        $model = $promoter->id !== null ? PromoterModel::findOrFail($promoter->id) : new PromoterModel();
+
+        $model->fill([
+            'user_id' => $promoter->userId,
+            'name' => $promoter->name,
+            'contact_phone' => $promoter->contactPhone,
+            'contact_email' => $promoter->contactEmail,
+            'instagram' => $promoter->instagram,
+            'tiktok' => $promoter->tiktok,
+            'approval_status' => $promoter->approvalStatus->value,
+        ]);
+
+        $model->save();
+
+        return $this->toDomain($model);
+    }
+
+    public function delete(int $id): void
+    {
+        PromoterModel::destroy($id);
+    }
+
+    private function toDomain(PromoterModel $model): Promoter
+    {
+        return new Promoter(
+            id: $model->id,
+            userId: $model->user_id,
+            name: $model->name,
+            contactPhone: $model->contact_phone,
+            contactEmail: $model->contact_email,
+            approvalStatus: $model->approval_status,
+            instagram: $model->instagram,
+            tiktok: $model->tiktok,
+        );
+    }
+}

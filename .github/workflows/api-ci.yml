@@ -45,6 +45,14 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+    env:
+      AWS_ACCESS_KEY_ID: qor
+      AWS_SECRET_ACCESS_KEY: qor12345
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_BUCKET: qor-media
+      AWS_ENDPOINT: http://127.0.0.1:9000
+      AWS_URL: http://127.0.0.1:9000/qor-media
+      AWS_USE_PATH_STYLE_ENDPOINT: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -52,12 +60,32 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: pdo, pdo_pgsql, pgsql, mbstring, bcmath, zip
+          extensions: pdo, pdo_pgsql, pgsql, mbstring, bcmath, zip, gd
           tools: composer:v2
           coverage: pcov
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      # T21 (S3UploadAdapter) needs a real S3-compatible endpoint — GitHub Actions
+      # "services:" containers can't override the image's default command, so MinIO
+      # is started as a plain `docker run` step instead, matching the root
+      # docker-compose.yml's minio + minio-init pattern for local dev.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=$AWS_ACCESS_KEY_ID -e MINIO_ROOT_PASSWORD=$AWS_SECRET_ACCESS_KEY \
+            minio/minio:latest server /data --console-address ":9001"
+          timeout 30 sh -c 'until curl -sf http://127.0.0.1:9000/minio/health/ready; do sleep 1; done'
+
+      - name: Create MinIO bucket
+        run: |
+          docker run --rm --network host \
+            -e MC_HOST_local=http://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY@127.0.0.1:9000 \
+            minio/mc:latest mb --ignore-existing local/$AWS_BUCKET
+          docker run --rm --network host \
+            -e MC_HOST_local=http://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY@127.0.0.1:9000 \
+            minio/mc:latest anonymous set public local/$AWS_BUCKET
 
       - name: Prepare environment
         run: |

@@ -4,14 +4,14 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use QOR\App\Models\AdminUser;
+use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\QOR\App\Models\AdminUser>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel>
  */
 class AdminUserFactory extends Factory
 {
-    protected $model = AdminUser::class;
+    protected $model = AdminUserModel::class;
 
     protected static ?string $password;
 
@@ -27,7 +27,7 @@ class AdminUserFactory extends Factory
 
     public function superAdmin(): static
     {
-        return $this->afterCreating(function (AdminUser $admin) {
+        return $this->afterCreating(function (AdminUserModel $admin) {
             $admin->forceFill(['is_super_admin' => true])->save();
         });
     }

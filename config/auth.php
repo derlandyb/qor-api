@@ -72,12 +72,12 @@ return [
     'providers' => [
         'fans' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_FAN_MODEL', \QOR\App\Models\User::class),
+            'model' => env('AUTH_FAN_MODEL', \QOR\App\Infrastructure\Persistence\Eloquent\UserModel::class),
         ],
 
         'admins' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_ADMIN_MODEL', \QOR\App\Models\AdminUser::class),
+            'model' => env('AUTH_ADMIN_MODEL', \QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel::class),
         ],
     ],
 

@@ -45,4 +45,20 @@ return [
         'public_api' => (int) env('QOR_RATE_LIMIT_PUBLIC_API', 60),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Media uploads (ARCHITECTURE.md §10)
+    |--------------------------------------------------------------------------
+    */
+    'uploads' => [
+        'image' => [
+            'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+            'max_size_kb' => (int) env('QOR_UPLOAD_IMAGE_MAX_SIZE_KB', 5120),
+            'min_width_px' => (int) env('QOR_UPLOAD_IMAGE_MIN_WIDTH_PX', 400),
+            'min_height_px' => (int) env('QOR_UPLOAD_IMAGE_MIN_HEIGHT_PX', 400),
+            'max_width_px' => (int) env('QOR_UPLOAD_IMAGE_MAX_WIDTH_PX', 6000),
+            'max_height_px' => (int) env('QOR_UPLOAD_IMAGE_MAX_HEIGHT_PX', 6000),
+        ],
+    ],
+
 ];
