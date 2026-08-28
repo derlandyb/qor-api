@@ -15,7 +15,7 @@ final class GetEventDetails
     }
 
     /**
-     * Returns null only when no event exists for $eventId. A Cancelled/Encerrado
+     * Returns null only when no event exists for $eventId. A Cancelled/Ended
      * event is still returned (not filtered out) so a stale/direct link renders
      * its status banner instead of a 404 (DISC-07..13).
      */

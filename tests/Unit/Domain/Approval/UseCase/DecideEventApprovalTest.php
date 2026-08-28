@@ -62,7 +62,7 @@ class DecideEventApprovalTest extends TestCase
         $this->assertSame(ApprovalDecidableType::Event, $decision->decidableType);
     }
 
-    public function test_GIVEN_event_starts_in_the_past_WHEN_approved_THEN_event_is_directly_encerrado(): void
+    public function test_GIVEN_event_starts_in_the_past_WHEN_approved_THEN_event_is_directly_ended(): void
     {
         $event = $this->makeEvent((new DateTimeImmutable())->modify('-1 day'));
 
@@ -70,7 +70,7 @@ class DecideEventApprovalTest extends TestCase
         $eventRepository->shouldReceive('findById')->once()->with(1)->andReturn($event);
         $eventRepository->shouldReceive('save')
             ->once()
-            ->with(Mockery::on(fn (Event $e) => $e->status === EventStatus::Encerrado))
+            ->with(Mockery::on(fn (Event $e) => $e->status === EventStatus::Ended))
             ->andReturnUsing(fn (Event $e) => $e);
 
         $approvalDecisionRepository = Mockery::mock(ApprovalDecisionRepository::class);

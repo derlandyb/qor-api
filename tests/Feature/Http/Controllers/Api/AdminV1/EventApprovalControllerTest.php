@@ -96,7 +96,7 @@ class EventApprovalControllerTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $this->assertDatabaseHas('events', ['id' => $event->id, 'status' => 'encerrado']);
+        $this->assertDatabaseHas('events', ['id' => $event->id, 'status' => 'ended']);
     }
 
     public function test_GIVEN_feedback_WHEN_rejecting_an_event_THEN_it_returns_to_draft_with_the_feedback_visible(): void

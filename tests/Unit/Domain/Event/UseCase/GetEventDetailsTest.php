@@ -76,9 +76,9 @@ class GetEventDetailsTest extends TestCase
         $this->assertSame(EventStatus::Cancelled, $detail->event->status);
     }
 
-    public function test_GIVEN_an_encerrado_event_WHEN_getting_details_THEN_it_is_still_returned_not_null(): void
+    public function test_GIVEN_an_ended_event_WHEN_getting_details_THEN_it_is_still_returned_not_null(): void
     {
-        $event = $this->makeEvent(EventStatus::Encerrado);
+        $event = $this->makeEvent(EventStatus::Ended);
 
         $events = Mockery::mock(EventRepository::class);
         $events->shouldReceive('findById')->once()->with(1)->andReturn($event);
@@ -89,7 +89,7 @@ class GetEventDetailsTest extends TestCase
         $detail = (new GetEventDetails($events, $promoters))->execute(1);
 
         $this->assertNotNull($detail);
-        $this->assertSame(EventStatus::Encerrado, $detail->event->status);
+        $this->assertSame(EventStatus::Ended, $detail->event->status);
     }
 
     public function test_GIVEN_a_nonexistent_event_id_WHEN_getting_details_THEN_it_returns_null(): void

@@ -14,7 +14,7 @@ class EventStatusTest extends TestCase
         $this->assertSame(EventStatus::Draft, EventStatus::from('draft'));
         $this->assertSame(EventStatus::PendingReview, EventStatus::from('pending_review'));
         $this->assertSame(EventStatus::Cancelled, EventStatus::from('cancelled'));
-        $this->assertSame(EventStatus::Encerrado, EventStatus::from('encerrado'));
+        $this->assertSame(EventStatus::Ended, EventStatus::from('ended'));
     }
 
     public function test_GIVEN_an_invalid_raw_value_WHEN_cast_THEN_it_throws(): void
