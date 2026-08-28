@@ -45,6 +45,18 @@ class EloquentConsentRepository implements ConsentRepository
         }
     }
 
+    public function findAllForConsentable(ConsentableType $consentableType, int $consentableId): array
+    {
+        $models = ConsentRecordModel::query()
+            ->where('consentable_type', $consentableType->value)
+            ->where('consentable_id', $consentableId)
+            ->orderByDesc('accepted_at')
+            ->orderByDesc('id')
+            ->get();
+
+        return array_values($models->map(fn (ConsentRecordModel $model) => $this->toDomain($model))->all());
+    }
+
     /**
      * @return \Illuminate\Database\Eloquent\Builder<ConsentRecordModel>
      */

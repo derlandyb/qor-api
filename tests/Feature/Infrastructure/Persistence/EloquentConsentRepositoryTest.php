@@ -75,4 +75,18 @@ class EloquentConsentRepositoryTest extends TestCase
         $this->assertTrue($repository->hasAccepted(ConsentableType::AdminUser, 42, ConsentType::Terms));
         $this->assertFalse($repository->hasAccepted(ConsentableType::User, 42, ConsentType::Terms));
     }
+
+    public function test_GIVEN_terms_and_revoked_location_records_WHEN_finding_all_for_a_consentable_THEN_both_are_returned(): void
+    {
+        $user = UserModel::factory()->create();
+        $repository = new EloquentConsentRepository();
+        $repository->record(ConsentableType::User, $user->id, ConsentType::Terms, '1.0');
+        $repository->record(ConsentableType::User, $user->id, ConsentType::Location, '1.0');
+        $repository->revoke(ConsentableType::User, $user->id, ConsentType::Location);
+
+        $records = $repository->findAllForConsentable(ConsentableType::User, $user->id);
+
+        $this->assertCount(2, $records);
+        $this->assertTrue($records[0]->isActive() || $records[1]->isActive());
+    }
 }

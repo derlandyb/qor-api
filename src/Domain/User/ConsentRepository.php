@@ -30,4 +30,12 @@ interface ConsentRepository
      * immediately (AUTH-25).
      */
     public function revoke(ConsentableType $consentableType, int $consentableId, ConsentType $consentType): void;
+
+    /**
+     * Every consent record (active or revoked) for a consentable, most recent
+     * first — used by LGPD data-access/export (AUTH-25).
+     *
+     * @return list<ConsentRecord>
+     */
+    public function findAllForConsentable(ConsentableType $consentableType, int $consentableId): array;
 }
