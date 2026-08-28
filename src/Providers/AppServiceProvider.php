@@ -61,12 +61,5 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute($limit)->by($request->ip());
         });
-
-        RateLimiter::for('qor-auth', function (Request $request) {
-            /** @var int $limit */
-            $limit = config('qor.rate_limits.auth');
-
-            return Limit::perMinute($limit)->by($request->ip());
-        });
     }
 }

@@ -15,5 +15,5 @@ use QOR\App\Http\Controllers\Api\V1\EventController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
-    Route::get('/events/{id}', [EventController::class, 'show']);
+    Route::get('/events/{id}', [EventController::class, 'show'])->whereNumber('id');
 });

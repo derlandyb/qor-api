@@ -81,4 +81,11 @@ class EventControllerTest extends TestCase
 
         $response->assertStatus(404)->assertExactJson(['message' => 'Evento não encontrado.']);
     }
+
+    public function test_GIVEN_a_non_numeric_event_id_WHEN_showing_THEN_it_returns_a_pt_br_404_envelope(): void
+    {
+        $response = $this->getJson('/api/v1/events/not-a-number');
+
+        $response->assertStatus(404)->assertExactJson(['message' => 'Recurso não encontrado.']);
+    }
 }
