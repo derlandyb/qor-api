@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Middleware\EnsureAdminIdentity;
 use QOR\App\Http\Middleware\EnsureFanIdentity;
+use QOR\App\Http\Middleware\EnsureSuperAdmin;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 $app = Application::configure(basePath: dirname(__DIR__))
@@ -28,6 +29,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'guard.fan' => EnsureFanIdentity::class,
             'guard.admin' => EnsureAdminIdentity::class,
+            'guard.super-admin' => EnsureSuperAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -42,6 +44,14 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // use case's own pt-BR message. Controllers catch and remap the few
         // exceptions that need a different status (e.g. invalid credentials).
         $exceptions->render(function (InvalidArgumentException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        });
+
+        // Illegal event-state-machine transitions (Event::transitionTo) —
+        // same treatment as InvalidArgumentException above.
+        $exceptions->render(function (DomainException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json(['message' => $e->getMessage()], 422);
             }
