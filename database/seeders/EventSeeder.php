@@ -59,7 +59,7 @@ class EventSeeder extends Seeder
                     'city' => $city->value,
                     'genre_id' => $genre->id,
                     'status' => $status->value,
-                    'starts_at' => $status === EventStatus::Encerrado
+                    'starts_at' => $status === EventStatus::Ended
                         ? now()->subDays(random_int(1, 30))
                         : now()->addDays(random_int(1, 90)),
                     'is_free' => $isFree,

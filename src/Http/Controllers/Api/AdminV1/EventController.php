@@ -9,7 +9,10 @@ use Illuminate\Http\UploadedFile;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\UseCase\CancelEvent;
 use QOR\App\Domain\Event\UseCase\CreateEvent;
+use QOR\App\Domain\Event\UseCase\DuplicateEvent;
+use QOR\App\Domain\Event\UseCase\EditEvent;
 use QOR\App\Domain\Event\UseCase\SubmitEventForReview;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
@@ -20,6 +23,8 @@ use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Http\Controllers\Controller;
 use QOR\App\Http\Policies\EventPolicy;
 use QOR\App\Http\Requests\Api\AdminV1\CreateEventRequest;
+use QOR\App\Http\Requests\Api\AdminV1\EditEventRequest;
+use QOR\App\Http\Support\OrganizerIdentityResolver;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
@@ -30,10 +35,14 @@ class EventController extends Controller
     public function __construct(
         private readonly CreateEvent $createEvent,
         private readonly SubmitEventForReview $submitEventForReview,
+        private readonly EditEvent $editEvent,
+        private readonly DuplicateEvent $duplicateEvent,
+        private readonly CancelEvent $cancelEvent,
         private readonly EventRepository $events,
         private readonly VenueRepository $venues,
         private readonly PromoterRepository $promoters,
         private readonly EventPolicy $policy,
+        private readonly OrganizerIdentityResolver $organizerIdentityResolver,
     ) {
     }
 
@@ -42,12 +51,18 @@ class EventController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        [$createdByType, $createdById] = $this->resolveOrganizerIdentity($admin);
+        [$createdByType, $createdById] = $this->organizerIdentityResolver->resolve($admin);
 
         $events = $this->events->findByCreator($createdByType, $createdById);
 
+        $eventIds = array_values(array_filter(array_map(fn (Event $event) => $event->id, $events)));
+        $taggedByEventId = $this->promoters->findTaggedForEvents($eventIds);
+
         return response()->json([
-            'data' => array_map(fn (Event $event) => $this->eventToArray($event), $events),
+            'data' => array_map(
+                fn (Event $event) => $this->eventToArray($event, $taggedByEventId[$event->id] ?? []),
+                $events,
+            ),
         ]);
     }
 
@@ -78,6 +93,8 @@ class EventController extends Controller
         $ageRating = $request->validated('age_rating');
         /** @var string|null $notes */
         $notes = $request->validated('notes');
+        /** @var list<int|string>|null $promoterIds */
+        $promoterIds = $request->validated('promoter_ids');
 
         $coverImage = null;
         if ($request->hasFile('cover_image')) {
@@ -101,6 +118,7 @@ class EventController extends Controller
             capacity: $capacity !== null ? (int) $capacity : null,
             ageRating: $ageRating,
             notes: $notes,
+            promoterIds: $promoterIds !== null ? array_map(fn ($id) => (int) $id, $promoterIds) : [],
         );
 
         return response()->json(['data' => $this->eventToArray($event)], 201);
@@ -127,6 +145,125 @@ class EventController extends Controller
         return response()->json(['data' => $this->eventToArray($event)]);
     }
 
+    public function update(EditEventRequest $request, int $id): JsonResponse
+    {
+        /** @var AdminUserModel $admin */
+        $admin = $request->user();
+
+        [$createdByType, $organizer] = $this->resolveOrganizer($admin);
+
+        $eventModel = EventModel::find($id);
+        if ($eventModel === null) {
+            return response()->json(['message' => 'Evento não encontrado.'], 404);
+        }
+
+        if (! $this->policy->update($admin, $eventModel, $this->organizerModel($admin, $createdByType))) {
+            return response()->json(['message' => 'Você não tem permissão para esta ação.'], 403);
+        }
+
+        /** @var string|null $title */
+        $title = $request->validated('title') ?? null;
+        /** @var string|null $description */
+        $description = $request->validated('description') ?? null;
+        /** @var string|null $startsAt */
+        $startsAt = $request->validated('starts_at') ?? null;
+        /** @var string|null $city */
+        $city = $request->validated('city') ?? null;
+        /** @var int|string|null $genreId */
+        $genreId = $request->validated('genre_id') ?? null;
+        /** @var string|null $address */
+        $address = $request->validated('address') ?? null;
+        /** @var string|null $ticketUrl */
+        $ticketUrl = $request->validated('ticket_url') ?? null;
+        /** @var int|string|null $capacity */
+        $capacity = $request->validated('capacity') ?? null;
+        /** @var string|null $ageRating */
+        $ageRating = $request->validated('age_rating') ?? null;
+        /** @var string|null $notes */
+        $notes = $request->validated('notes') ?? null;
+        /** @var list<int|string>|null $promoterIds */
+        $promoterIds = $request->validated('promoter_ids') ?? null;
+
+        $coverImage = null;
+        if ($request->hasFile('cover_image')) {
+            /** @var UploadedFile $file */
+            $file = $request->file('cover_image');
+            $coverImage = $this->toUploadableFile($file);
+        }
+
+        $isFree = $request->has('is_free') ? $request->boolean('is_free') : null;
+
+        $event = $this->editEvent->execute(
+            eventId: $id,
+            organizer: $organizer,
+            title: $title,
+            description: $description,
+            startsAt: $startsAt !== null ? new DateTimeImmutable($startsAt) : null,
+            city: $city !== null ? City::from($city) : null,
+            genreId: $genreId !== null ? (int) $genreId : null,
+            isFree: $isFree,
+            address: $address,
+            coverImage: $coverImage,
+            ticketUrl: $ticketUrl,
+            capacity: $capacity !== null ? (int) $capacity : null,
+            ageRating: $ageRating,
+            notes: $notes,
+            promoterIds: $promoterIds !== null ? array_map(fn ($pid) => (int) $pid, $promoterIds) : null,
+        );
+
+        return response()->json(['data' => $this->eventToArray($event)]);
+    }
+
+    public function duplicate(Request $request, int $id): JsonResponse
+    {
+        /** @var AdminUserModel $admin */
+        $admin = $request->user();
+
+        [$createdByType, $organizer] = $this->resolveOrganizer($admin);
+
+        $eventModel = EventModel::find($id);
+        if ($eventModel === null) {
+            return response()->json(['message' => 'Evento não encontrado.'], 404);
+        }
+
+        if (! $this->policy->update($admin, $eventModel, $this->organizerModel($admin, $createdByType))) {
+            return response()->json(['message' => 'Você não tem permissão para esta ação.'], 403);
+        }
+
+        $validated = $request->validate(['starts_at' => ['required', 'date']]);
+        /** @var string $startsAt */
+        $startsAt = $validated['starts_at'];
+
+        $event = $this->duplicateEvent->execute(
+            eventId: $id,
+            organizer: $organizer,
+            startsAt: new DateTimeImmutable($startsAt),
+        );
+
+        return response()->json(['data' => $this->eventToArray($event)], 201);
+    }
+
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        /** @var AdminUserModel $admin */
+        $admin = $request->user();
+
+        [$createdByType, $organizer] = $this->resolveOrganizer($admin);
+
+        $eventModel = EventModel::find($id);
+        if ($eventModel === null) {
+            return response()->json(['message' => 'Evento não encontrado.'], 404);
+        }
+
+        if (! $this->policy->update($admin, $eventModel, $this->organizerModel($admin, $createdByType))) {
+            return response()->json(['message' => 'Você não tem permissão para esta ação.'], 403);
+        }
+
+        $event = $this->cancelEvent->execute($id, $organizer);
+
+        return response()->json(['data' => $this->eventToArray($event)]);
+    }
+
     public function destroy(Request $request, int $id): JsonResponse
     {
         /** @var AdminUserModel $admin */
@@ -149,29 +286,11 @@ class EventController extends Controller
     }
 
     /**
-     * @return array{0: EventCreatedByType, 1: int}
-     */
-    private function resolveOrganizerIdentity(AdminUserModel $admin): array
-    {
-        $venue = VenueModel::where('venue_admin_user_id', $admin->id)->first();
-        if ($venue !== null) {
-            return [EventCreatedByType::VenueAdmin, (int) $venue->id];
-        }
-
-        $promoter = PromoterModel::where('user_id', $admin->id)->first();
-        if ($promoter !== null) {
-            return [EventCreatedByType::Promoter, (int) $promoter->id];
-        }
-
-        abort(403, 'Conta não é uma Venue ou Promoter registrada.');
-    }
-
-    /**
      * @return array{0: EventCreatedByType, 1: Venue|Promoter}
      */
     private function resolveOrganizer(AdminUserModel $admin): array
     {
-        [$createdByType, $createdById] = $this->resolveOrganizerIdentity($admin);
+        [$createdByType, $createdById] = $this->organizerIdentityResolver->resolve($admin);
 
         if ($createdByType === EventCreatedByType::VenueAdmin) {
             $venue = $this->venues->findById($createdById);
@@ -220,10 +339,15 @@ class EventController extends Controller
     }
 
     /**
+     * @param ?list<Promoter> $promoters pass to reuse an already-fetched batch (e.g. from index()); omit to fetch for a single event
      * @return array<string, mixed>
      */
-    private function eventToArray(Event $event): array
+    private function eventToArray(Event $event, ?array $promoters = null): array
     {
+        if ($promoters === null) {
+            $promoters = $event->id !== null ? $this->promoters->findTaggedForEvent($event->id) : [];
+        }
+
         return [
             'id' => $event->id,
             'title' => $event->title,
@@ -242,6 +366,14 @@ class EventController extends Controller
             'rejection_feedback' => $event->rejectionFeedback,
             'created_by_type' => $event->createdByType->value,
             'created_by_id' => $event->createdById,
+            'promoters' => array_map(fn (Promoter $promoter) => [
+                'id' => $promoter->id,
+                'name' => $promoter->name,
+                'contact_phone' => $promoter->contactPhone,
+                'contact_email' => $promoter->contactEmail,
+                'instagram' => $promoter->instagram,
+                'tiktok' => $promoter->tiktok,
+            ], $promoters),
         ];
     }
 }

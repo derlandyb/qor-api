@@ -5,6 +5,7 @@ namespace Tests\Feature\Infrastructure\Persistence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
+use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
@@ -178,5 +179,31 @@ class EloquentEventRepositoryTest extends TestCase
         $this->assertCount(2, $events);
         $this->assertSame($later->id, $events[0]->id);
         $this->assertSame($earlier->id, $events[1]->id);
+    }
+
+    public function test_GIVEN_published_events_past_and_future_and_a_cancelled_past_event_WHEN_finding_published_past_end_THEN_only_the_published_past_event_is_returned(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        $pastPublished = EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'starts_at' => now()->subHour(),
+        ]);
+        EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'starts_at' => now()->addHour(),
+        ]);
+        EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'status' => EventStatus::Cancelled->value,
+            'starts_at' => now()->subHour(),
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $events = $repository->findPublishedPastEnd();
+
+        $this->assertCount(1, $events);
+        $this->assertSame($pastPublished->id, $events[0]->id);
     }
 }

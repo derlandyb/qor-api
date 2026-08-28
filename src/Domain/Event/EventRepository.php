@@ -23,6 +23,14 @@ interface EventRepository
      */
     public function findByCreator(EventCreatedByType $createdByType, int $createdById): array;
 
+    /**
+     * All Published events whose starts_at has already passed. Used by the
+     * events:close-ended scheduled command (ADMIN-23) to naturally end them.
+     *
+     * @return list<Event>
+     */
+    public function findPublishedPastEnd(): array;
+
     public function save(Event $event): Event;
 
     public function delete(int $id): void;

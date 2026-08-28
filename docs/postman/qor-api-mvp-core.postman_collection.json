@@ -1,0 +1,1284 @@
+{
+  "info": {
+    "_postman_id": "3a754b45-68d0-4cb2-ae71-fba8fcea8026",
+    "name": "QOR API — MVP Core",
+    "description": "Postman collection covering every route registered in qor-api as of Phase 4 (Event Lifecycle & Admin Tools) — 34 routes across routes/api_v1.php (fan-facing, /api/v1/*) and routes/api_admin_v1.php (admin surface, /api/admin/v1/*). See ARCHITECTURE.md §8.9.\n\nAuth: fan-guarded routes use `Authorization: Bearer {{fan_token}}`; admin-guarded routes (including Super-Admin-only approval routes) use `Authorization: Bearer {{admin_token}}`. Public routes need no Authorization header. Obtain a fan token via 'Login (Fan)' (or 'Register (Fan)' + login); an admin token currently has no dedicated admin-login endpoint in this phase — paste one obtained through your own admin auth flow into the `admin_token` variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fan_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth (Fan)",
+      "item": [
+        {
+          "name": "Register (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "AUTH-01/AUTH-02/AUTH-05 — fan self-registration with email/password, terms acceptance required. Public, no token needed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Souza\",\n  \"email\": \"ana.souza@example.com\",\n  \"password\": \"SenhaForte123\",\n  \"birthdate\": \"1998-04-12\",\n  \"phone\": \"27999998888\",\n  \"terms_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "AUTH-09/AUTH-11 — returning-fan login. Public, no token needed. Response contains `token` — copy into the `fan_token` collection/environment variable for subsequent authenticated requests.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.souza@example.com\",\n  \"password\": \"SenhaForte123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login with Google (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/google",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "google"
+              ]
+            },
+            "description": "AUTH-06/AUTH-07/AUTH-08 — Google signup/login. Public, no token needed. NOTE: current implementation trusts the client-supplied google_id/email/name as-is (Google ID token server-side verification not yet implemented — known gap, see PR description).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"google_id\": \"108234567890123456789\",\n  \"email\": \"ana.souza@gmail.com\",\n  \"name\": \"Ana Souza\",\n  \"profile_picture_url\": \"https://lh3.googleusercontent.com/a/example\",\n  \"terms_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "AUTH-12 — ends the fan's current session by revoking the current Sanctum access token. Requires fan bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password/forgot",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "password",
+                "forgot"
+              ]
+            },
+            "description": "AUTH-13/AUTH-14 — requests a password reset link. Public, no token needed. Always returns a generic success message (no account enumeration).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.souza@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password/reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "password",
+                "reset"
+              ]
+            },
+            "description": "AUTH-15/AUTH-16 — confirms a password reset using the token from the reset-link email. Public, no token needed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.souza@example.com\",\n  \"token\": \"paste-token-from-reset-email-here\",\n  \"password\": \"NovaSenhaForte456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Email Verification (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/verification-notification",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "email",
+                "verification-notification"
+              ]
+            },
+            "description": "AUTH-01 — resends the account-verification email. Public, no token needed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.souza@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email (Fan)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/verify/:id/:hash",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "email",
+                "verify",
+                ":id",
+                ":hash"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                },
+                {
+                  "key": "hash",
+                  "value": "paste-signed-hash-from-email-link-here"
+                }
+              ]
+            },
+            "description": "AUTH-01 — signed email-verification link, clicked from the verification email; not called directly with a bearer token. `id` is the fan's user id, `hash` is the signed verification hash from the email link."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Pending Email Change (Fan)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/pending/verify/:id/:hash",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "email",
+                "pending",
+                "verify",
+                ":id",
+                ":hash"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                },
+                {
+                  "key": "hash",
+                  "value": "paste-signed-hash-from-email-link-here"
+                }
+              ]
+            },
+            "description": "AUTH-19 — signed link confirming an in-progress email change, clicked from the confirmation email; not called directly with a bearer token. `id` is the fan's user id, `hash` is the signed hash from the email link."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profile (Fan)",
+      "item": [
+        {
+          "name": "Get Profile (Fan)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile"
+              ]
+            },
+            "description": "AUTH-17 — display core profile fields. Requires fan bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Fan)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile"
+              ]
+            },
+            "description": "AUTH-18/AUTH-19 — edit username/phone/email (email change triggers re-verification). All fields optional/nullable. Requires fan bearer token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Souza Lima\",\n  \"phone\": \"27999997777\",\n  \"email\": \"ana.nova@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile Picture (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile/picture",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile",
+                "picture"
+              ]
+            },
+            "description": "AUTH-18 — upload a new profile picture. Requires fan bearer token.\n\nNOTE: multipart/form-data upload — field name `picture` (required, must be an image file). Set the request Body tab to `form-data` in Postman and attach a file under key `picture`."
+          },
+          "response": []
+        },
+        {
+          "name": "Data Rights — Access (Fan)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile/data-rights/access",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile",
+                "data-rights",
+                "access"
+              ]
+            },
+            "description": "AUTH-25 — LGPD data-subject access request: returns the fan's stored personal data. Requires fan bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Data Rights — Export (Fan)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile/data-rights/export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile",
+                "data-rights",
+                "export"
+              ]
+            },
+            "description": "AUTH-25 — LGPD data-subject export request: returns a full JSON export of the fan's data. Requires fan bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Data Rights — Delete Account (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile/data-rights/delete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile",
+                "data-rights",
+                "delete"
+              ]
+            },
+            "description": "AUTH-25 — LGPD data-subject deletion request: deletes the fan's account and revokes the current access token. No request body. Requires fan bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Data Rights — Revoke Consent (Fan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{fan_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile/data-rights/revoke",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile",
+                "data-rights",
+                "revoke"
+              ]
+            },
+            "description": "AUTH-25 — LGPD data-subject consent revocation. `consent_type` must be one of: terms, location. Requires fan bearer token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"consent_type\": \"location\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Events (Public)",
+      "item": [
+        {
+          "name": "List Upcoming Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/events?city=vitoria&genre=1&cursor=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "vitoria"
+                },
+                {
+                  "key": "genre",
+                  "value": "1"
+                },
+                {
+                  "key": "cursor",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "DISC-01/DISC-02/DISC-03/DISC-14/DISC-15/DISC-16 — cursor-paginated, soonest-first upcoming events, optionally filtered by city and/or genre. Public, no token needed. All query params optional."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/events/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "events",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "DISC-07/DISC-08/DISC-09/DISC-10/DISC-11/DISC-13 — full event detail including tagged promoters. Public, no token needed. `id` must be a valid seeded event id (e.g. from `php artisan db:seed`, or from a prior List Upcoming Events response)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Venue/Promoter Registration & Profile",
+      "item": [
+        {
+          "name": "Register Venue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/venues/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "venues",
+                "register"
+              ]
+            },
+            "description": "ADMIN-01 — venue self-registration; account created as Pending Approval. Public, no token needed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Clube Náutico Vitória\",\n  \"description\": \"Casa de shows e eventos na orla de Vitória.\",\n  \"address\": \"Av. Beira Mar, 500, Vitória - ES\",\n  \"city\": \"vitoria\",\n  \"contact_phone\": \"27988887777\",\n  \"contact_email\": \"contato@clubenauticovix.com.br\",\n  \"registration_email\": \"admin@clubenauticovix.com.br\",\n  \"password\": \"SenhaForte123\",\n  \"terms_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Venue Profile (Own)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/venues/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "venues",
+                "me"
+              ]
+            },
+            "description": "ADMIN-25 — the logged-in venue admin's own venue profile. All fields optional/nullable. Requires admin bearer token.\n\nAccepts a `city` field (one of: vitoria, vila_velha, serra, cariacica) plus text fields below. Also accepts an optional `image` file upload (multipart/form-data) for the venue's image — omitted from this raw JSON example; switch to form-data and attach key `image` to update the image.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Clube Náutico Vitória - Novo Espaço\",\n  \"description\": \"Casa de shows e eventos na orla de Vitória, com novo espaço ao ar livre.\",\n  \"address\": \"Av. Beira Mar, 600, Vitória - ES\",\n  \"city\": \"vitoria\",\n  \"contact_phone\": \"27988886666\",\n  \"contact_email\": \"contato@clubenauticovix.com.br\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Promoter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/promoters/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "promoters",
+                "register"
+              ]
+            },
+            "description": "ADMIN-05 — promoter self-registration; account created as Pending Approval. Public, no token needed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bruno Ferreira Produções\",\n  \"contact_phone\": \"27977776666\",\n  \"contact_email\": \"contato@brunoferreiraproducoes.com.br\",\n  \"instagram\": \"@brunoferreiraproducoes\",\n  \"tiktok\": \"@brunoferreiraproducoes\",\n  \"registration_email\": \"admin@brunoferreiraproducoes.com.br\",\n  \"password\": \"SenhaForte123\",\n  \"terms_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Promoter Profile (Own)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/promoters/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "promoters",
+                "me"
+              ]
+            },
+            "description": "ADMIN-25 — the logged-in promoter's own profile. All fields optional/nullable. Requires admin bearer token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bruno Ferreira Produções LTDA\",\n  \"contact_phone\": \"27977775555\",\n  \"contact_email\": \"novo-contato@brunoferreiraproducoes.com.br\",\n  \"instagram\": \"@brunoferreiraproducoesoficial\",\n  \"tiktok\": \"@brunoferreiraproducoesoficial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Events",
+      "item": [
+        {
+          "name": "List Own Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events"
+              ]
+            },
+            "description": "ADMIN-21 — list events created by the logged-in venue/promoter admin. Requires admin bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Event (Draft)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events"
+              ]
+            },
+            "description": "ADMIN-13/ADMIN-14 — create a new event as Draft. Paid events (`is_free: false`) require `ticket_url`. Requires admin bearer token.\n\nAlso accepts an optional `cover_image` file upload (multipart/form-data) — omitted from this raw JSON example; switch to form-data and attach key `cover_image` to include a cover image.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Noite Eletrônica na Orla\",\n  \"description\": \"Uma noite de música eletrônica com line-up local e nacional.\",\n  \"starts_at\": \"2026-10-15T22:00:00-03:00\",\n  \"city\": \"vitoria\",\n  \"genre_id\": 4,\n  \"is_free\": false,\n  \"address\": \"Av. Beira Mar, 500, Vitória - ES\",\n  \"ticket_url\": \"https://ingressos.example.com/noite-eletronica\",\n  \"capacity\": 800,\n  \"age_rating\": \"18+\",\n  \"notes\": \"Entrada apenas com documento de identidade.\",\n  \"promoter_ids\": [\n    1\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Event for Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events/:id/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events",
+                ":id",
+                "submit"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-14/ADMIN-15 — moves a Draft event to Pending Review. No request body. `id` must be an event owned by the logged-in admin. Requires admin bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Own Event",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-21 — edit own event. All fields optional/nullable (partial edit); which fields may change per event status is enforced in the domain layer. `id` must be an event owned by the logged-in admin. Requires admin bearer token.\n\nAlso accepts an optional `cover_image` file upload (multipart/form-data) — omitted from this raw JSON example.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Noite Eletrônica na Orla - Line-up Atualizado\",\n  \"capacity\": 1000,\n  \"notes\": \"Entrada apenas com documento de identidade. Line-up atualizado.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events/:id/duplicate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events",
+                ":id",
+                "duplicate"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-21 — duplicates an existing event as a new Draft with a new `starts_at`. `id` must be an event owned by the logged-in admin. Requires admin bearer token. NOTE: validated inline in the controller (no dedicated FormRequest class) — only `starts_at` is accepted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"starts_at\": \"2026-11-15T22:00:00-03:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events/:id/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events",
+                ":id",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-22 — organizer cancellation of their own event. No request body. `id` must be an event owned by the logged-in admin. Requires admin bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Own Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/events/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "events",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-21 — permanently deletes an own event. No request body. `id` must be an event owned by the logged-in admin. Requires admin bearer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Approvals",
+      "item": [
+        {
+          "name": "List Pending Account Approvals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/approvals/accounts?page=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "approvals",
+                "accounts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-07 — Super Admin account-approval queue: list pending Venue/Promoter accounts. Paginated via `page` query param. Requires Super Admin bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Decide Account Approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/approvals/accounts/:accountType/:id/decide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "approvals",
+                "accounts",
+                ":accountType",
+                ":id",
+                "decide"
+              ],
+              "variable": [
+                {
+                  "key": "accountType",
+                  "value": "venue"
+                },
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-08/ADMIN-09/ADMIN-10 — Super Admin approves/rejects/suspends a Venue or Promoter account, with an auditable decision. `accountType` is one of: venue, promoter. `outcome` is one of: approved, rejected, suspended, suspension_lifted. Requires Super Admin bearer token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"approved\",\n  \"reason\": \"Documentação e dados de contato conferidos.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Pending Event Approvals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/approvals/events?page=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "approvals",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-17 — Super Admin event-publish queue: list events Pending Review. Paginated via `page` query param. Requires Super Admin bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Decide Event Approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/approvals/events/:id/decide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "approvals",
+                "events",
+                ":id",
+                "decide"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "ADMIN-17/ADMIN-22 — Super Admin approves an event to Published, rejects it back with feedback, or force-cancels it. `outcome` is one of: approved, rejected, force_cancelled. Requires Super Admin bearer token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"approved\",\n  \"feedback\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "dashboard"
+              ]
+            },
+            "description": "ADMIN-26 — Venue/Promoter dashboard: per-event stats for the logged-in admin's own events. view_count/favorite_count/ticket_click_count/interested_count are currently always null (Favorites & Social milestone not yet built). Requires admin bearer token."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

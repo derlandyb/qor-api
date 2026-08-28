@@ -12,6 +12,7 @@
 
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\AdminV1\AccountApprovalController;
+use QOR\App\Http\Controllers\Api\AdminV1\DashboardController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventApprovalController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
@@ -22,10 +23,19 @@ Route::middleware('throttle:qor-auth')->group(function () {
     Route::post('/promoters/register', [PromoterController::class, 'register']);
 });
 
+Route::middleware(['auth:admin', 'guard.admin'])->group(function () {
+    Route::patch('/venues/me', [VenueController::class, 'update']);
+    Route::patch('/promoters/me', [PromoterController::class, 'update']);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
 Route::prefix('events')->middleware(['auth:admin', 'guard.admin'])->group(function () {
     Route::get('/', [EventController::class, 'index']);
     Route::post('/', [EventController::class, 'store']);
     Route::post('/{id}/submit', [EventController::class, 'submit'])->whereNumber('id');
+    Route::patch('/{id}', [EventController::class, 'update'])->whereNumber('id');
+    Route::post('/{id}/duplicate', [EventController::class, 'duplicate'])->whereNumber('id');
+    Route::post('/{id}/cancel', [EventController::class, 'cancel'])->whereNumber('id');
     Route::delete('/{id}', [EventController::class, 'destroy'])->whereNumber('id');
 });
 

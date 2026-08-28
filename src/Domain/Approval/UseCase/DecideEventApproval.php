@@ -37,7 +37,7 @@ final class DecideEventApproval
 
         $newStatus = match ($outcome) {
             ApprovalOutcome::Approved => $event->startsAt < new DateTimeImmutable()
-                ? EventStatus::Encerrado
+                ? EventStatus::Ended
                 : EventStatus::Published,
             ApprovalOutcome::Rejected => EventStatus::Draft,
             ApprovalOutcome::ForceCancelled => EventStatus::Cancelled,

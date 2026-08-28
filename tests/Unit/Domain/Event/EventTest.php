@@ -80,6 +80,16 @@ class EventTest extends TestCase
         $this->assertSame(EventStatus::Cancelled, $event->status);
     }
 
+    public function test_GIVEN_a_published_event_WHEN_its_start_time_passes_THEN_it_transitions_to_ended(): void
+    {
+        $event = $this->makeEvent()
+            ->transitionTo(EventStatus::PendingReview)
+            ->transitionTo(EventStatus::Published)
+            ->transitionTo(EventStatus::Ended);
+
+        $this->assertSame(EventStatus::Ended, $event->status);
+    }
+
     public function test_GIVEN_a_draft_event_WHEN_publishing_directly_THEN_it_throws(): void
     {
         $this->expectException(DomainException::class);

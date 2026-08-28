@@ -14,10 +14,10 @@ final class Event
     /** @var array<string, list<string>> */
     private const LEGAL_TRANSITIONS = [
         'draft' => ['pending_review'],
-        'pending_review' => ['published', 'draft', 'encerrado', 'cancelled'],
-        'published' => ['cancelled', 'encerrado'],
+        'pending_review' => ['published', 'draft', 'ended', 'cancelled'],
+        'published' => ['cancelled', 'ended'],
         'cancelled' => [],
-        'encerrado' => [],
+        'ended' => [],
     ];
 
     public function __construct(

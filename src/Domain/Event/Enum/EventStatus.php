@@ -8,5 +8,5 @@ enum EventStatus: string
     case PendingReview = 'pending_review';
     case Published = 'published';
     case Cancelled = 'cancelled';
-    case Encerrado = 'encerrado';
+    case Ended = 'ended';
 }
