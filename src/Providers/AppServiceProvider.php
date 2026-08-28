@@ -2,8 +2,11 @@
 
 namespace QOR\App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use QOR\App\Domain\Approval\ApprovalDecisionRepository;
@@ -51,5 +54,12 @@ class AppServiceProvider extends ServiceProvider
                 return 'Database\\Factories\\'.Str::afterLast($modelName, '\\').'Factory';
             }
         );
+
+        RateLimiter::for('qor-public-api', function (Request $request) {
+            /** @var int $limit */
+            $limit = config('qor.rate_limits.public_api');
+
+            return Limit::perMinute($limit)->by($request->ip());
+        });
     }
 }

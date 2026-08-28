@@ -2,6 +2,7 @@
 
 namespace QOR\App\Infrastructure\Persistence;
 
+use Illuminate\Support\Facades\DB;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
@@ -13,6 +14,29 @@ class EloquentPromoterRepository implements PromoterRepository
         $model = PromoterModel::find($id);
 
         return $model ? $this->toDomain($model) : null;
+    }
+
+    public function findTaggedForEvent(int $eventId): array
+    {
+        /** @var \Illuminate\Support\Collection<int, int> $promoterIds */
+        $promoterIds = DB::table('event_promoter')
+            ->where('event_id', $eventId)
+            ->orderBy('tagged_at')
+            ->pluck('promoter_id');
+
+        $models = PromoterModel::whereIn('id', $promoterIds)->get()->keyBy('id');
+
+        $promoters = [];
+        foreach ($promoterIds as $promoterId) {
+            /** @var PromoterModel|null $model */
+            $model = $models->get($promoterId);
+
+            if ($model !== null) {
+                $promoters[] = $this->toDomain($model);
+            }
+        }
+
+        return $promoters;
     }
 
     public function save(Promoter $promoter): Promoter
