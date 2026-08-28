@@ -215,7 +215,7 @@ class RegisterPromoterTest extends TestCase
         );
     }
 
-    public function test_GIVEN_invalid_promoter_fields_WHEN_executing_THEN_promoters_own_validation_exception_surfaces(): void
+    public function test_GIVEN_invalid_promoter_fields_WHEN_executing_THEN_promoters_own_validation_error_is_surfaced_before_any_row_is_created(): void
     {
         $adminAccounts = Mockery::mock(AdminAccountRepository::class);
         $promoters = Mockery::mock(PromoterRepository::class);
@@ -223,29 +223,12 @@ class RegisterPromoterTest extends TestCase
         $passwordHasher = Mockery::mock(PasswordHasher::class);
         $passwordPolicy = new PasswordPolicy(minLength: 8, requireMixedCase: true, requireNumbers: true);
 
-        // Invalid contactEmail is chosen (rather than an empty name) because
-        // AdminAccount's own constructor already validates a non-empty name
-        // using the same $name value, so it would throw first and mask the
-        // Promoter-specific assertion this test targets.
         $adminAccounts->shouldReceive('findByEmail')
             ->once()
             ->with('promoter@example.com')
             ->andReturn(null);
 
-        $passwordHasher->shouldReceive('hash')
-            ->once()
-            ->with('SenhaForte1')
-            ->andReturn('hashed-password');
-
-        $adminAccounts->shouldReceive('save')
-            ->once()
-            ->andReturn(new AdminAccount(
-                id: 42,
-                name: 'Produtora XYZ',
-                email: 'promoter@example.com',
-                passwordHash: 'hashed-password',
-            ));
-
+        $adminAccounts->shouldNotReceive('save');
         $promoters->shouldNotReceive('save');
         $consent->shouldNotReceive('record');
 

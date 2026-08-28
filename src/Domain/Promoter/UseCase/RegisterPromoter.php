@@ -47,6 +47,21 @@ final class RegisterPromoter
             throw new InvalidArgumentException(implode(' ', $errors));
         }
 
+        // Validate the promoter's own field constraints (Promoter's
+        // constructor) before creating any row, so invalid data never
+        // leaves a dangling admin account behind. The placeholder userId is
+        // discarded; the real Promoter is constructed again below once the
+        // account exists.
+        new Promoter(
+            id: null,
+            userId: 0,
+            name: $name,
+            contactPhone: $contactPhone,
+            contactEmail: $contactEmail,
+            instagram: $instagram,
+            tiktok: $tiktok,
+        );
+
         $savedAccount = $this->adminAccounts->save(new AdminAccount(
             id: null,
             name: $name,
