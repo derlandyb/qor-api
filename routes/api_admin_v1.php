@@ -12,6 +12,7 @@
 
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\AdminV1\AccountApprovalController;
+use QOR\App\Http\Controllers\Api\AdminV1\DashboardController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventApprovalController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
@@ -25,6 +26,7 @@ Route::middleware('throttle:qor-auth')->group(function () {
 Route::middleware(['auth:admin', 'guard.admin'])->group(function () {
     Route::patch('/venues/me', [VenueController::class, 'update']);
     Route::patch('/promoters/me', [PromoterController::class, 'update']);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 });
 
 Route::prefix('events')->middleware(['auth:admin', 'guard.admin'])->group(function () {
