@@ -245,7 +245,7 @@ class EditEventTest extends TestCase
 
         $repository = Mockery::mock(EventRepository::class);
         $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
-        $repository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+        $repository->shouldNotReceive('save');
 
         $fileUpload = Mockery::mock(FileUploadPort::class);
 

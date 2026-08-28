@@ -66,6 +66,10 @@ final class CreateEvent
             throw new InvalidArgumentException('O organizador precisa estar cadastrado.');
         }
 
+        if ($organizer instanceof Venue && $promoterIds !== []) {
+            $this->assertPromotersApproved($promoterIds);
+        }
+
         $event = new Event(
             id: null,
             createdByType: $createdByType,
@@ -87,16 +91,22 @@ final class CreateEvent
         $savedEvent = $this->events->save($event);
 
         if ($organizer instanceof Venue && $promoterIds !== [] && $savedEvent->id !== null) {
-            foreach ($promoterIds as $promoterId) {
-                $promoter = $this->promoters->findById($promoterId);
-                if ($promoter === null || $promoter->approvalStatus !== ApprovalStatus::Approved) {
-                    throw new InvalidArgumentException('Promotor inválido ou não aprovado.');
-                }
-            }
-
             $this->promoters->tagEvent($savedEvent->id, $promoterIds);
         }
 
         return $savedEvent;
+    }
+
+    /**
+     * @param list<int> $promoterIds
+     */
+    private function assertPromotersApproved(array $promoterIds): void
+    {
+        foreach ($promoterIds as $promoterId) {
+            $promoter = $this->promoters->findById($promoterId);
+            if ($promoter === null || $promoter->approvalStatus !== ApprovalStatus::Approved) {
+                throw new InvalidArgumentException('Promotor inválido ou não aprovado.');
+            }
+        }
     }
 }

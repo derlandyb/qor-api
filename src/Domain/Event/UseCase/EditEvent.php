@@ -51,6 +51,10 @@ final class EditEvent
             throw new InvalidArgumentException('Evento não encontrado.');
         }
 
+        if ($promoterIds !== null && $organizer instanceof Venue) {
+            $this->assertPromotersApproved($promoterIds);
+        }
+
         $coverImageUrl = $event->coverImageUrl;
         if ($coverImage !== null) {
             $coverImageUrl = $this->fileUpload->upload($coverImage, 'events/covers');
@@ -137,13 +141,19 @@ final class EditEvent
             return;
         }
 
+        $this->promoters->tagEvent($event->id, $promoterIds);
+    }
+
+    /**
+     * @param list<int> $promoterIds
+     */
+    private function assertPromotersApproved(array $promoterIds): void
+    {
         foreach ($promoterIds as $promoterId) {
             $promoter = $this->promoters->findById($promoterId);
             if ($promoter === null || $promoter->approvalStatus !== ApprovalStatus::Approved) {
                 throw new InvalidArgumentException('Promotor inválido ou não aprovado.');
             }
         }
-
-        $this->promoters->tagEvent($event->id, $promoterIds);
     }
 }

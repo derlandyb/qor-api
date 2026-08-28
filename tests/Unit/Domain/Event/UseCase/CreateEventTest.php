@@ -297,20 +297,7 @@ class CreateEventTest extends TestCase
         );
 
         $repository = Mockery::mock(EventRepository::class);
-        $repository->shouldReceive('save')
-            ->once()
-            ->andReturnUsing(fn (Event $event) => new Event(
-                id: 99,
-                createdByType: $event->createdByType,
-                createdById: $event->createdById,
-                title: $event->title,
-                description: $event->description,
-                startsAt: $event->startsAt,
-                city: $event->city,
-                genreId: $event->genreId,
-                isFree: $event->isFree,
-                address: $event->address,
-            ));
+        $repository->shouldNotReceive('save');
 
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
