@@ -3,9 +3,13 @@ FROM php:8.4-cli
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
         libzip-dev \
+        libpng-dev \
+        libjpeg62-turbo-dev \
+        libwebp-dev \
         git \
         unzip \
-    && docker-php-ext-install pdo pdo_pgsql pgsql zip bcmath \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install pdo pdo_pgsql pgsql zip bcmath gd \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
