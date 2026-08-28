@@ -1,0 +1,82 @@
+name: api-ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  MIN_COVERAGE: 80
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo, pdo_pgsql, pgsql, mbstring, bcmath, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHPStan (strict)
+        run: vendor/bin/phpstan analyse --memory-limit=512M --error-format=github
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: qor_test
+          POSTGRES_USER: qor
+          POSTGRES_PASSWORD: qor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qor"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo, pdo_pgsql, pgsql, mbstring, bcmath, zip
+          tools: composer:v2
+          coverage: pcov
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: qor_test
+          DB_USERNAME: qor
+          DB_PASSWORD: qor
+
+      - name: Run tests with coverage gate
+        run: php artisan test --coverage --min=${{ env.MIN_COVERAGE }}
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: qor_test
+          DB_USERNAME: qor
+          DB_PASSWORD: qor

@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - src
+        - routes
+        - database
+
+    level: 9
+
+    excludePaths:
+        - src/**/*.blade.php
