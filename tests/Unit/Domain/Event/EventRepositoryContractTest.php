@@ -39,6 +39,15 @@ final class InMemoryEventRepository implements EventRepository
         ));
     }
 
+    public function findPublishedPastEnd(): array
+    {
+        return array_values(array_filter(
+            $this->events,
+            fn (Event $event) => $event->status === \QOR\App\Domain\Event\Enum\EventStatus::Published
+                && $event->startsAt < new DateTimeImmutable(),
+        ));
+    }
+
     public function save(Event $event): Event
     {
         $id = $event->id ?? $this->nextId++;

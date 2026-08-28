@@ -25,6 +25,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/api_admin_v1.php'));
         },
     )
+    // app/ was renamed to src/ (see the useAppPath note below), so the default
+    // withCommands() discovery path (app_path('Console/Commands'), resolved
+    // before useAppPath() runs) must be given explicitly here.
+    ->withCommands([__DIR__.'/../src/Console/Commands'])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'guard.fan' => EnsureFanIdentity::class,
