@@ -22,7 +22,13 @@ class AdminUserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'is_super_admin' => false,
         ];
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->afterCreating(function (AdminUser $admin) {
+            $admin->forceFill(['is_super_admin' => true])->save();
+        });
     }
 }
