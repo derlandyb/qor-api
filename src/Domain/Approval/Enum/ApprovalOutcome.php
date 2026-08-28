@@ -7,5 +7,6 @@ enum ApprovalOutcome: string
     case Approved = 'approved';
     case Rejected = 'rejected';
     case Suspended = 'suspended';
+    case SuspensionLifted = 'suspension_lifted';
     case ForceCancelled = 'force_cancelled';
 }
