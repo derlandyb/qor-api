@@ -31,6 +31,9 @@ Route::prefix('events')->middleware(['auth:admin', 'guard.admin'])->group(functi
     Route::get('/', [EventController::class, 'index']);
     Route::post('/', [EventController::class, 'store']);
     Route::post('/{id}/submit', [EventController::class, 'submit'])->whereNumber('id');
+    Route::patch('/{id}', [EventController::class, 'update'])->whereNumber('id');
+    Route::post('/{id}/duplicate', [EventController::class, 'duplicate'])->whereNumber('id');
+    Route::post('/{id}/cancel', [EventController::class, 'cancel'])->whereNumber('id');
     Route::delete('/{id}', [EventController::class, 'destroy'])->whereNumber('id');
 });
 
