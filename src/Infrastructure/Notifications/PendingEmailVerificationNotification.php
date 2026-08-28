@@ -24,9 +24,12 @@ class PendingEmailVerificationNotification extends Notification
 
     public function toMail(UserModel $notifiable): MailMessage
     {
+        /** @var int $ttlMinutes */
+        $ttlMinutes = config('qor.auth.email_verification_ttl_minutes');
+
         $url = URL::temporarySignedRoute(
             'email.pending.verify',
-            now()->addMinutes(60),
+            now()->addMinutes($ttlMinutes),
             ['id' => $notifiable->id, 'hash' => sha1($this->newEmail)],
         );
 
