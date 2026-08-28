@@ -8,6 +8,8 @@ use QOR\App\Domain\Shared\PasswordHasher;
 use QOR\App\Domain\User\ConsentRepository;
 use QOR\App\Domain\User\Enum\ConsentableType;
 use QOR\App\Domain\User\Enum\ConsentType;
+use QOR\App\Domain\User\Exception\InvalidCredentials;
+use QOR\App\Domain\User\Exception\UnverifiedAccount;
 use QOR\App\Domain\User\User;
 use QOR\App\Domain\User\UserRepository;
 
@@ -25,11 +27,11 @@ final class AuthenticateFan
         $user = $this->users->findByEmail($email);
 
         if ($user === null || $user->passwordHash === null || ! $this->passwordHasher->verify($password, $user->passwordHash)) {
-            throw new InvalidArgumentException('Credenciais inválidas');
+            throw new InvalidCredentials('Credenciais inválidas');
         }
 
         if (! $user->isVerified()) {
-            throw new InvalidArgumentException('Confirme seu e-mail para continuar');
+            throw new UnverifiedAccount('Confirme seu e-mail para continuar');
         }
 
         return $user;

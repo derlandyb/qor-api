@@ -2,7 +2,9 @@
 
 namespace QOR\App\Providers;
 
+use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -84,6 +86,25 @@ class AppServiceProvider extends ServiceProvider
             $limit = config('qor.rate_limits.public_api');
 
             return Limit::perMinute($limit)->by($request->ip());
+        });
+
+        RateLimiter::for('qor-auth', function (Request $request) {
+            /** @var int $limit */
+            $limit = config('qor.rate_limits.auth');
+
+            return Limit::perMinute($limit)->by($request->ip());
+        });
+
+        // The reset link opens a client-app screen (mobile deep link / web
+        // route — not built yet, no submodule feature work has started per
+        // STATE.md) that then POSTs to /api/v1/auth/password/reset with the
+        // token; there's no server-rendered "password.reset" page here.
+        ResetPasswordNotification::createUrlUsing(function (mixed $notifiable, string $token): string {
+            /** @var CanResetPassword $notifiable */
+            /** @var string $appUrl */
+            $appUrl = config('app.url');
+
+            return $appUrl.'/redefinir-senha?token='.$token.'&email='.urlencode($notifiable->getEmailForPasswordReset());
         });
     }
 }
