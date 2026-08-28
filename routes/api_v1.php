@@ -13,6 +13,7 @@
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\V1\AuthController;
 use QOR\App\Http\Controllers\Api\V1\EventController;
+use QOR\App\Http\Controllers\Api\V1\ProfileController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
@@ -40,3 +41,13 @@ Route::prefix('auth')->middleware('throttle:qor-auth')->group(function () {
 
 Route::post('/auth/logout', [AuthController::class, 'logout'])
     ->middleware(['auth:fan', 'guard.fan']);
+
+Route::prefix('profile')->middleware(['auth:fan', 'guard.fan'])->group(function () {
+    Route::get('/', [ProfileController::class, 'show']);
+    Route::patch('/', [ProfileController::class, 'update']);
+    Route::post('/picture', [ProfileController::class, 'updatePicture']);
+    Route::get('/data-rights/access', [ProfileController::class, 'dataRightsAccess']);
+    Route::get('/data-rights/export', [ProfileController::class, 'dataRightsExport']);
+    Route::post('/data-rights/delete', [ProfileController::class, 'dataRightsDelete']);
+    Route::post('/data-rights/revoke', [ProfileController::class, 'dataRightsRevoke']);
+});
