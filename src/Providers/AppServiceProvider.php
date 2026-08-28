@@ -13,15 +13,22 @@ use QOR\App\Domain\Approval\ApprovalDecisionRepository;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\FileUploadPort;
+use QOR\App\Domain\Shared\PasswordHasher;
 use QOR\App\Domain\User\ConsentRepository;
+use QOR\App\Domain\User\EmailVerificationPort;
+use QOR\App\Domain\User\PasswordPolicy;
+use QOR\App\Domain\User\PasswordResetPort;
 use QOR\App\Domain\User\UserRepository;
 use QOR\App\Domain\Venue\VenueRepository;
+use QOR\App\Infrastructure\Auth\LaravelEmailVerificationAdapter;
+use QOR\App\Infrastructure\Auth\LaravelPasswordResetAdapter;
 use QOR\App\Infrastructure\Persistence\EloquentApprovalDecisionRepository;
 use QOR\App\Infrastructure\Persistence\EloquentConsentRepository;
 use QOR\App\Infrastructure\Persistence\EloquentEventRepository;
 use QOR\App\Infrastructure\Persistence\EloquentPromoterRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserRepository;
 use QOR\App\Infrastructure\Persistence\EloquentVenueRepository;
+use QOR\App\Infrastructure\Security\LaravelPasswordHasher;
 use QOR\App\Infrastructure\Storage\S3UploadAdapter;
 
 class AppServiceProvider extends ServiceProvider
@@ -38,6 +45,20 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ApprovalDecisionRepository::class, EloquentApprovalDecisionRepository::class);
         $this->app->bind(ConsentRepository::class, EloquentConsentRepository::class);
         $this->app->bind(FileUploadPort::class, S3UploadAdapter::class);
+        $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
+        $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
+        $this->app->bind(PasswordResetPort::class, LaravelPasswordResetAdapter::class);
+
+        $this->app->singleton(PasswordPolicy::class, function () {
+            /** @var int $min */
+            $min = config('qor.auth.password_rules.min');
+            /** @var bool $mixedCase */
+            $mixedCase = config('qor.auth.password_rules.mixed_case');
+            /** @var bool $numbers */
+            $numbers = config('qor.auth.password_rules.numbers');
+
+            return new PasswordPolicy($min, $mixedCase, $numbers);
+        });
     }
 
     /**
