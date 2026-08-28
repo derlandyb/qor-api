@@ -14,6 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * @property-read \Illuminate\Support\Carbon $birthdate
  * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property string|null $pending_email
  */
 class UserModel extends Authenticatable implements MustVerifyEmailContract
 {
@@ -30,6 +31,7 @@ class UserModel extends Authenticatable implements MustVerifyEmailContract
     protected $fillable = [
         'name',
         'email',
+        'pending_email',
         'password_hash',
         'google_id',
         'phone',

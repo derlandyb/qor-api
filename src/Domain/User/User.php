@@ -17,6 +17,7 @@ final class User
         public readonly ?string $phone = null,
         public readonly ?string $profilePictureUrl = null,
         public readonly ?DateTimeImmutable $emailVerifiedAt = null,
+        public readonly ?string $pendingEmail = null,
     ) {
         if (! filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidArgumentException("E-mail inválido: {$this->email}");

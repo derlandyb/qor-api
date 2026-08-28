@@ -29,6 +29,7 @@ class EloquentUserRepository implements UserRepository
         $model->fill([
             'name' => $user->name,
             'email' => $user->email,
+            'pending_email' => $user->pendingEmail,
             'password_hash' => $user->passwordHash,
             'google_id' => $user->googleId,
             'phone' => $user->phone,
@@ -62,6 +63,7 @@ class EloquentUserRepository implements UserRepository
             phone: $model->phone,
             profilePictureUrl: $model->profile_picture_url,
             emailVerifiedAt: $model->email_verified_at?->toDateTimeImmutable(),
+            pendingEmail: $model->pending_email,
         );
     }
 }
