@@ -1,15 +1,23 @@
 <?php
 
-namespace QOR\App\Models;
+namespace QOR\App\Infrastructure\Persistence\Eloquent;
 
+use Database\Factories\AdminUserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-class AdminUser extends Authenticatable
+class AdminUserModel extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\AdminUserFactory> */
     use HasApiTokens, HasFactory;
+
+    protected $table = 'admin_users';
+
+    protected static function newFactory(): AdminUserFactory
+    {
+        return AdminUserFactory::new();
+    }
 
     protected $fillable = [
         'name',

@@ -5,7 +5,7 @@ namespace QOR\App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use QOR\App\Models\User;
+use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -19,7 +19,7 @@ class EnsureFanIdentity
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! Auth::guard('fan')->user() instanceof User) {
+        if (! Auth::guard('fan')->user() instanceof UserModel) {
             abort(401, 'Não autenticado.');
         }
 
