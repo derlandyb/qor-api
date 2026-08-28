@@ -13,9 +13,11 @@ use QOR\App\Domain\Approval\ApprovalDecisionRepository;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\FileUploadPort;
+use QOR\App\Domain\User\ConsentRepository;
 use QOR\App\Domain\User\UserRepository;
 use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Infrastructure\Persistence\EloquentApprovalDecisionRepository;
+use QOR\App\Infrastructure\Persistence\EloquentConsentRepository;
 use QOR\App\Infrastructure\Persistence\EloquentEventRepository;
 use QOR\App\Infrastructure\Persistence\EloquentPromoterRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserRepository;
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(VenueRepository::class, EloquentVenueRepository::class);
         $this->app->bind(PromoterRepository::class, EloquentPromoterRepository::class);
         $this->app->bind(ApprovalDecisionRepository::class, EloquentApprovalDecisionRepository::class);
+        $this->app->bind(ConsentRepository::class, EloquentConsentRepository::class);
         $this->app->bind(FileUploadPort::class, S3UploadAdapter::class);
     }
 

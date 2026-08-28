@@ -16,9 +16,15 @@ final class ConsentRecord
         public readonly ConsentType $consentType,
         public readonly string $policyVersion,
         public readonly DateTimeImmutable $acceptedAt,
+        public readonly ?DateTimeImmutable $revokedAt = null,
     ) {
         if ($this->policyVersion === '') {
             throw new InvalidArgumentException('A versão da política não pode ser vazia.');
         }
+    }
+
+    public function isActive(): bool
+    {
+        return $this->revokedAt === null;
     }
 }

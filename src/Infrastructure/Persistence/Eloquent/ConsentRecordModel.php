@@ -12,6 +12,7 @@ use QOR\App\Domain\User\Enum\ConsentType;
  * @property-read ConsentableType $consentable_type
  * @property-read ConsentType $consent_type
  * @property-read \Illuminate\Support\Carbon $accepted_at
+ * @property \Illuminate\Support\Carbon|null $revoked_at
  */
 class ConsentRecordModel extends Model
 {
@@ -28,6 +29,7 @@ class ConsentRecordModel extends Model
         'consent_type',
         'policy_version',
         'accepted_at',
+        'revoked_at',
     ];
 
     protected function casts(): array
@@ -36,6 +38,7 @@ class ConsentRecordModel extends Model
             'consentable_type' => ConsentableType::class,
             'consent_type' => ConsentType::class,
             'accepted_at' => 'datetime',
+            'revoked_at' => 'datetime',
         ];
     }
 
