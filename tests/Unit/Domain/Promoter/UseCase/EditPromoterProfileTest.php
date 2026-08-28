@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Domain\Promoter\UseCase;
 
+use DomainException;
 use InvalidArgumentException;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
@@ -69,6 +70,27 @@ class EditPromoterProfileTest extends TestCase
         $this->expectExceptionMessage('Promoter não encontrado.');
 
         (new EditPromoterProfile($promoters))->execute(promoterId: 999);
+    }
+
+    public function test_GIVEN_a_suspended_promoter_WHEN_editing_THEN_it_throws_and_does_not_save(): void
+    {
+        $suspended = new Promoter(
+            id: 1,
+            userId: 42,
+            name: 'Produtora Vitória Eventos',
+            contactPhone: '27999997777',
+            contactEmail: 'contato@produtora.com',
+            approvalStatus: ApprovalStatus::Suspended,
+        );
+
+        $promoters = Mockery::mock(PromoterRepository::class);
+        $promoters->shouldReceive('findById')->once()->with(1)->andReturn($suspended);
+        $promoters->shouldNotReceive('save');
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Sua conta está suspensa e não pode editar o perfil.');
+
+        (new EditPromoterProfile($promoters))->execute(promoterId: 1, name: 'Novo Nome');
     }
 
     public function test_GIVEN_the_approval_status_is_not_a_parameter_WHEN_editing_THEN_the_current_approval_status_is_preserved(): void

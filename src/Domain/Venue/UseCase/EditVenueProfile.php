@@ -2,7 +2,9 @@
 
 namespace QOR\App\Domain\Venue\UseCase;
 
+use DomainException;
 use InvalidArgumentException;
+use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\UploadableFile;
@@ -36,6 +38,10 @@ final class EditVenueProfile
 
         if ($venue === null) {
             throw new InvalidArgumentException('Venue não encontrada.');
+        }
+
+        if ($venue->approvalStatus === ApprovalStatus::Suspended) {
+            throw new DomainException('Sua conta está suspensa e não pode editar o perfil.');
         }
 
         $imageUrl = $venue->imageUrl;

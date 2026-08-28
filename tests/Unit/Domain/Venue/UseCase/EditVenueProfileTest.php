@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Domain\Venue\UseCase;
 
+use DomainException;
 use InvalidArgumentException;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
@@ -86,6 +87,33 @@ class EditVenueProfileTest extends TestCase
         $this->expectExceptionMessage('Venue não encontrada.');
 
         (new EditVenueProfile($venues, $fileUpload))->execute(venueId: 999);
+    }
+
+    public function test_GIVEN_a_suspended_venue_WHEN_editing_THEN_it_throws_and_does_not_save(): void
+    {
+        $suspended = new Venue(
+            id: 1,
+            venueAdminUserId: 42,
+            name: 'Bar do Zé',
+            description: 'Casa de shows no centro',
+            address: 'Rua das Flores, 100',
+            city: City::Vitoria,
+            contactPhone: '27999999999',
+            contactEmail: 'contato@bardoze.com',
+            approvalStatus: ApprovalStatus::Suspended,
+        );
+
+        $venues = Mockery::mock(VenueRepository::class);
+        $venues->shouldReceive('findById')->once()->with(1)->andReturn($suspended);
+        $venues->shouldNotReceive('save');
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $fileUpload->shouldNotReceive('upload');
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Sua conta está suspensa e não pode editar o perfil.');
+
+        (new EditVenueProfile($venues, $fileUpload))->execute(venueId: 1, name: 'Novo Nome');
     }
 
     public function test_GIVEN_the_approval_status_is_not_a_parameter_WHEN_editing_THEN_the_current_approval_status_is_preserved(): void

@@ -2,7 +2,9 @@
 
 namespace QOR\App\Domain\Promoter\UseCase;
 
+use DomainException;
 use InvalidArgumentException;
+use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 
@@ -30,6 +32,10 @@ final class EditPromoterProfile
 
         if ($promoter === null) {
             throw new InvalidArgumentException('Promoter não encontrado.');
+        }
+
+        if ($promoter->approvalStatus === ApprovalStatus::Suspended) {
+            throw new DomainException('Sua conta está suspensa e não pode editar o perfil.');
         }
 
         $updated = new Promoter(
