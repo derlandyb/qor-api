@@ -98,4 +98,49 @@ class EloquentFavoriteRepositoryTest extends TestCase
         $this->assertCount(1, $secondPage->items);
         $this->assertNull($secondPage->nextCursor);
     }
+
+    public function test_GIVEN_a_favorited_event_WHEN_checking_has_user_favorited_THEN_it_returns_true(): void
+    {
+        $user = UserModel::factory()->create();
+        $event = EventModel::factory()->published()->create();
+        FavoriteModel::create(['user_id' => $user->id, 'event_id' => $event->id, 'created_at' => now()]);
+
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
+
+        $this->assertTrue($repository->hasUserFavorited($user->id, $event->id));
+    }
+
+    public function test_GIVEN_no_favorite_WHEN_checking_has_user_favorited_THEN_it_returns_false(): void
+    {
+        $user = UserModel::factory()->create();
+        $event = EventModel::factory()->published()->create();
+
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
+
+        $this->assertFalse($repository->hasUserFavorited($user->id, $event->id));
+    }
+
+    public function test_GIVEN_multiple_fans_favorited_an_event_WHEN_listing_user_ids_who_favorited_THEN_all_of_them_are_returned(): void
+    {
+        $event = EventModel::factory()->published()->create();
+        $fanA = UserModel::factory()->create();
+        $fanB = UserModel::factory()->create();
+        FavoriteModel::create(['user_id' => $fanA->id, 'event_id' => $event->id, 'created_at' => now()]);
+        FavoriteModel::create(['user_id' => $fanB->id, 'event_id' => $event->id, 'created_at' => now()]);
+
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
+
+        $userIds = $repository->listUserIdsWhoFavorited($event->id);
+
+        $this->assertEqualsCanonicalizing([$fanA->id, $fanB->id], $userIds);
+    }
+
+    public function test_GIVEN_no_fans_favorited_an_event_WHEN_listing_user_ids_who_favorited_THEN_an_empty_list_is_returned(): void
+    {
+        $event = EventModel::factory()->published()->create();
+
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
+
+        $this->assertSame([], $repository->listUserIdsWhoFavorited($event->id));
+    }
 }

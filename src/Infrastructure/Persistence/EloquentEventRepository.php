@@ -2,6 +2,7 @@
 
 namespace QOR\App\Infrastructure\Persistence;
 
+use DateTimeImmutable;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
@@ -92,6 +93,20 @@ class EloquentEventRepository implements EventRepository
     {
         $models = EventModel::where('status', EventStatus::Published->value)
             ->where('starts_at', '<', now())
+            ->get();
+
+        return array_values($models->map(fn (EventModel $model) => $this->toDomain($model))->all());
+    }
+
+    public function findRecentlyPublished(City $city, DateTimeImmutable $since): array
+    {
+        // No dedicated `published_at` column exists on `events` — `updated_at` is used
+        // as an approximation of "became Published" (edits also bump it, which is an
+        // acceptable minor over-inclusion at v1's single-region scale; a dedicated
+        // column can be added later if this proves inaccurate in practice).
+        $models = EventModel::where('status', EventStatus::Published->value)
+            ->where('city', $city->value)
+            ->where('updated_at', '>=', $since)
             ->get();
 
         return array_values($models->map(fn (EventModel $model) => $this->toDomain($model))->all());

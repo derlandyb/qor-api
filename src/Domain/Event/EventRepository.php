@@ -2,6 +2,7 @@
 
 namespace QOR\App\Domain\Event;
 
+use DateTimeImmutable;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Shared\Enum\City;
 
@@ -39,6 +40,15 @@ interface EventRepository
      * @return list<Event>
      */
     public function findPublishedPastEnd(): array;
+
+    /**
+     * Published events in the given city that became Published since $since —
+     * used by DetectRegionalPublishes (NOTIF-16–19) to scope a scan window rather
+     * than re-announcing every currently-Published event on every run.
+     *
+     * @return list<Event>
+     */
+    public function findRecentlyPublished(City $city, DateTimeImmutable $since): array;
 
     public function save(Event $event): Event;
 

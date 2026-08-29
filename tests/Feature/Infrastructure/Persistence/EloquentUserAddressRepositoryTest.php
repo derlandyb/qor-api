@@ -81,4 +81,25 @@ class EloquentUserAddressRepositoryTest extends TestCase
             $found->locationConsentGivenAt->getTimestamp(),
         );
     }
+
+    public function test_GIVEN_multiple_fans_with_addresses_WHEN_listing_all_with_address_THEN_all_of_them_are_returned(): void
+    {
+        $repository = new EloquentUserAddressRepository();
+        $userA = UserModel::factory()->create();
+        $userB = UserModel::factory()->create();
+
+        $repository->save(new UserAddress(id: null, userId: $userA->id, city: City::Vitoria, state: 'ES'));
+        $repository->save(new UserAddress(id: null, userId: $userB->id, city: City::Serra, state: 'ES'));
+
+        $addresses = $repository->listAllWithAddress();
+
+        $this->assertCount(2, $addresses);
+    }
+
+    public function test_GIVEN_no_addresses_WHEN_listing_all_with_address_THEN_an_empty_list_is_returned(): void
+    {
+        $repository = new EloquentUserAddressRepository();
+
+        $this->assertSame([], $repository->listAllWithAddress());
+    }
 }

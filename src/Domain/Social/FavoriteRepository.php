@@ -18,4 +18,20 @@ interface FavoriteRepository
      * cursor-paginated per `config('qor.pagination.public_page_size')`.
      */
     public function listForUser(int $userId, ?string $cursor): FavoritePage;
+
+    /**
+     * True if $userId currently has $eventId favorited, regardless of the
+     * event's status — used by cross-referencing use cases (e.g. mutual
+     * friends interested in an event) that don't need the paginated list.
+     */
+    public function hasUserFavorited(int $userId, int $eventId): bool;
+
+    /**
+     * Every fan who currently has $eventId favorited, regardless of the
+     * event's status — used to notify favoriting fans when an event changes
+     * or is cancelled (NOTIF-05–NOTIF-08).
+     *
+     * @return list<int>
+     */
+    public function listUserIdsWhoFavorited(int $eventId): array;
 }
