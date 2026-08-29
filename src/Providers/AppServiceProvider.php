@@ -14,6 +14,9 @@ use Illuminate\Support\Str;
 use QOR\App\Domain\Admin\AdminAccountRepository;
 use QOR\App\Domain\Approval\ApprovalDecisionRepository;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Notification\NotificationDispatcher;
+use QOR\App\Domain\Notification\NotificationLogRepository;
+use QOR\App\Domain\Notification\NotificationPreferenceRepository;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\PasswordHasher;
@@ -27,12 +30,16 @@ use QOR\App\Domain\User\UserRepository;
 use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Infrastructure\Auth\LaravelEmailVerificationAdapter;
 use QOR\App\Infrastructure\Auth\LaravelPasswordResetAdapter;
+use QOR\App\Infrastructure\Notification\FcmPushSender;
+use QOR\App\Infrastructure\Notification\SesEmailSender;
 use QOR\App\Infrastructure\Persistence\EloquentAdminAccountRepository;
 use QOR\App\Infrastructure\Persistence\EloquentApprovalDecisionRepository;
 use QOR\App\Infrastructure\Persistence\EloquentConsentRepository;
 use QOR\App\Infrastructure\Persistence\EloquentEventRepository;
 use QOR\App\Infrastructure\Persistence\EloquentFavoriteRepository;
 use QOR\App\Infrastructure\Persistence\EloquentFriendshipRepository;
+use QOR\App\Infrastructure\Persistence\EloquentNotificationLogRepository;
+use QOR\App\Infrastructure\Persistence\EloquentNotificationPreferenceRepository;
 use QOR\App\Infrastructure\Persistence\EloquentPromoterRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserRepository;
 use QOR\App\Infrastructure\Persistence\EloquentVenueRepository;
@@ -55,6 +62,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ConsentRepository::class, EloquentConsentRepository::class);
         $this->app->bind(FavoriteRepository::class, EloquentFavoriteRepository::class);
         $this->app->bind(FriendshipRepository::class, EloquentFriendshipRepository::class);
+        $this->app->bind(NotificationPreferenceRepository::class, EloquentNotificationPreferenceRepository::class);
+        $this->app->bind(NotificationLogRepository::class, EloquentNotificationLogRepository::class);
         $this->app->bind(FileUploadPort::class, S3UploadAdapter::class);
         $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
         $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
@@ -69,6 +78,23 @@ class AppServiceProvider extends ServiceProvider
             $numbers = config('qor.auth.password_rules.numbers');
 
             return new PasswordPolicy($min, $mixedCase, $numbers);
+        });
+
+        // NotificationDispatcher (ARCHITECTURE.md §6.1) takes the push and
+        // email senders as two positional NotificationSender ports — bound
+        // here explicitly rather than via NotificationSender::class, which
+        // would be ambiguous between FcmPushSender and SesEmailSender.
+        $this->app->bind(NotificationDispatcher::class, function ($app) {
+            /** @var int $consolidationWindowMinutes */
+            $consolidationWindowMinutes = config('qor.notifications.consolidation_window_minutes');
+
+            return new NotificationDispatcher(
+                $app->make(NotificationPreferenceRepository::class),
+                $app->make(NotificationLogRepository::class),
+                $app->make(FcmPushSender::class),
+                $app->make(SesEmailSender::class),
+                $consolidationWindowMinutes,
+            );
         });
     }
 

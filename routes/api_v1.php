@@ -16,15 +16,18 @@ use QOR\App\Http\Controllers\Api\V1\EventController;
 use QOR\App\Http\Controllers\Api\V1\FavoriteController;
 use QOR\App\Http\Controllers\Api\V1\FriendshipController;
 use QOR\App\Http\Controllers\Api\V1\ProfileController;
+use QOR\App\Http\Controllers\Api\V1\ShareController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{id}', [EventController::class, 'show'])->whereNumber('id');
 });
 
-Route::post('/events/{id}/favorite', [FavoriteController::class, 'toggle'])
-    ->whereNumber('id')
-    ->middleware(['auth:fan', 'guard.fan']);
+Route::middleware(['auth:fan', 'guard.fan'])->group(function () {
+    Route::post('/events/{id}/favorite', [FavoriteController::class, 'toggle'])->whereNumber('id');
+    Route::get('/events/{id}/friends-interested', [ShareController::class, 'friendsInterested'])->whereNumber('id');
+    Route::post('/events/{id}/share', [ShareController::class, 'share'])->whereNumber('id');
+});
 
 Route::prefix('auth')->middleware('throttle:qor-auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
