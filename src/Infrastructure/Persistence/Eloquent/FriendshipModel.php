@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use QOR\App\Domain\Social\Enum\FriendshipStatus;
 
 /**
- * @property-read FriendshipStatus $status
+ * @property FriendshipStatus $status
+ * @property-read \Illuminate\Support\Carbon $created_at
  */
 class FriendshipModel extends Model
 {

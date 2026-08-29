@@ -24,7 +24,7 @@ class EloquentFriendshipRepository implements FriendshipRepository
     public function accept(int $friendshipId): Friendship
     {
         $model = FriendshipModel::findOrFail($friendshipId);
-        $model->status = FriendshipStatus::Accepted->value;
+        $model->status = FriendshipStatus::Accepted;
         $model->save();
 
         return $this->toDomain($model);
@@ -114,7 +114,7 @@ class EloquentFriendshipRepository implements FriendshipRepository
             requesterId: $model->requester_id,
             recipientId: $model->recipient_id,
             status: $model->status,
-            createdAt: $model->created_at?->toDateTimeImmutable(),
+            createdAt: $model->created_at->toDateTimeImmutable(),
             updatedAt: $model->updated_at?->toDateTimeImmutable(),
         );
     }
