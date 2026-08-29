@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use QOR\App\Domain\Billing\UseCase\ResetPeriodUsage;
 use QOR\App\Domain\Notification\UseCase\DetectNearbyReminders;
 use QOR\App\Domain\Notification\UseCase\DetectRegionalPublishes;
 
@@ -26,3 +27,8 @@ Schedule::call(fn () => app(DetectNearbyReminders::class)->execute())
 $regionalPublishScanIntervalMinutes = config('qor.notifications.regional_publish_scan_interval_minutes');
 Schedule::call(fn () => app(DetectRegionalPublishes::class)->execute())
     ->cron("*/{$regionalPublishScanIntervalMinutes} * * * *");
+
+// MON-11: reset every organizer's monthly publish-quota usage at each
+// calendar-month boundary.
+Schedule::call(fn () => app(ResetPeriodUsage::class)->execute())
+    ->monthlyOn(1, '00:00');
