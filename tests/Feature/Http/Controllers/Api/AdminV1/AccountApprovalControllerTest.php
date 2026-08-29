@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Http\Controllers\Api\AdminV1\AccountApprovalController;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\PlanModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
@@ -81,6 +82,8 @@ class AccountApprovalControllerTest extends TestCase
 
     public function test_GIVEN_a_pending_venue_WHEN_approving_it_THEN_it_becomes_approved(): void
     {
+        PlanModel::factory()->create(['is_default_free' => true]);
+
         $admin = $this->superAdmin();
         $venue = VenueModel::factory()->create();
 

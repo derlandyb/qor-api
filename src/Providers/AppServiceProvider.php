@@ -14,6 +14,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use QOR\App\Domain\Admin\AdminAccountRepository;
 use QOR\App\Domain\Approval\ApprovalDecisionRepository;
+use QOR\App\Domain\Billing\PlanRepository;
+use QOR\App\Domain\Billing\SubscriptionRepository;
 use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Event\EventRepository;
@@ -29,6 +31,7 @@ use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\PasswordHasher;
+use QOR\App\Domain\Shared\TransactionManager;
 use QOR\App\Domain\Social\DomainEvent\FavoriteCreated;
 use QOR\App\Domain\Social\FavoriteRepository;
 use QOR\App\Domain\Social\FriendshipRepository;
@@ -53,11 +56,14 @@ use QOR\App\Infrastructure\Persistence\EloquentFavoriteRepository;
 use QOR\App\Infrastructure\Persistence\EloquentFriendshipRepository;
 use QOR\App\Infrastructure\Persistence\EloquentNotificationLogRepository;
 use QOR\App\Infrastructure\Persistence\EloquentNotificationPreferenceRepository;
+use QOR\App\Infrastructure\Persistence\EloquentPlanRepository;
 use QOR\App\Infrastructure\Persistence\EloquentPromoterRepository;
+use QOR\App\Infrastructure\Persistence\EloquentSubscriptionRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserAddressRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserFavoriteGenreRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserRepository;
 use QOR\App\Infrastructure\Persistence\EloquentVenueRepository;
+use QOR\App\Infrastructure\Persistence\LaravelTransactionManager;
 use QOR\App\Infrastructure\Security\LaravelPasswordHasher;
 use QOR\App\Infrastructure\Storage\S3UploadAdapter;
 
@@ -74,6 +80,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PromoterRepository::class, EloquentPromoterRepository::class);
         $this->app->bind(ApprovalDecisionRepository::class, EloquentApprovalDecisionRepository::class);
         $this->app->bind(AdminAccountRepository::class, EloquentAdminAccountRepository::class);
+        $this->app->bind(PlanRepository::class, EloquentPlanRepository::class);
+        $this->app->bind(SubscriptionRepository::class, EloquentSubscriptionRepository::class);
         $this->app->bind(ConsentRepository::class, EloquentConsentRepository::class);
         $this->app->bind(FavoriteRepository::class, EloquentFavoriteRepository::class);
         $this->app->bind(FriendshipRepository::class, EloquentFriendshipRepository::class);
@@ -86,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
         $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
         $this->app->bind(PasswordResetPort::class, LaravelPasswordResetAdapter::class);
+        $this->app->bind(TransactionManager::class, LaravelTransactionManager::class);
 
         $this->app->singleton(PasswordPolicy::class, function () {
             /** @var int $min */

@@ -8,10 +8,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use QOR\App\Domain\Billing\Enum\SubscribableType;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\PlanModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\SubscriptionModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
 
@@ -179,11 +182,34 @@ class EventControllerTest extends TestCase
         $venue = $this->actingAsVenueAdmin();
         $genreId = $this->genreId();
         $event = EventModel::factory()->create(['created_by_type' => 'venue_admin', 'created_by_id' => $venue->id, 'genre_id' => $genreId]);
+        SubscriptionModel::factory()->create([
+            'subscribable_type' => SubscribableType::Venue->value,
+            'subscribable_id' => $venue->id,
+        ]);
 
         $response = $this->postJson("/api/admin/v1/events/{$event->id}/submit");
 
         $response->assertStatus(200)->assertJsonPath('data.status', 'pending_review');
         $this->assertDatabaseHas('events', ['id' => $event->id, 'status' => 'pending_review']);
+    }
+
+    public function test_GIVEN_an_organizer_already_at_their_plans_publish_quota_WHEN_submitting_for_review_THEN_it_returns_422_with_the_quota_exceeded_code(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+        $genreId = $this->genreId();
+        $event = EventModel::factory()->create(['created_by_type' => 'venue_admin', 'created_by_id' => $venue->id, 'genre_id' => $genreId, 'status' => 'draft']);
+        $plan = PlanModel::factory()->create(['publish_quota' => 5]);
+        SubscriptionModel::factory()->create([
+            'subscribable_type' => SubscribableType::Venue->value,
+            'subscribable_id' => $venue->id,
+            'plan_id' => $plan->id,
+            'publishes_used_this_period' => 5,
+        ]);
+
+        $response = $this->postJson("/api/admin/v1/events/{$event->id}/submit");
+
+        $response->assertStatus(422)->assertJsonPath('code', 'quota_exceeded');
+        $this->assertDatabaseHas('events', ['id' => $event->id, 'status' => 'draft']);
     }
 
     public function test_GIVEN_an_event_owned_by_a_different_organizer_WHEN_submitting_for_review_THEN_it_returns_403(): void

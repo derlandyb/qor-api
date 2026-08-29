@@ -1935,6 +1935,224 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Monetization (Milestone 3)",
+      "item": [
+        {
+          "name": "Public Plans",
+          "item": [
+            {
+              "name": "List Active Plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/plans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "plans"
+                  ]
+                },
+                "description": "MON-01/MON-02/MON-03 — public, unauthenticated list of every currently active plan (name, monthly price, publish quota, optional annual price) for the landing page. Deactivated plans never appear here."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Admin — Plan CRUD (Super Admin)",
+          "item": [
+            {
+              "name": "List All Plans (Super Admin)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/plans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "plans"
+                  ]
+                },
+                "description": "MON-13/MON-15 — Super Admin view of every plan, active and deactivated. Requires Super Admin bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Plan (Super Admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/plans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "plans"
+                  ]
+                },
+                "description": "MON-13/MON-16 — creates a new active plan. `annual_price` optional; `publish_quota` null = unlimited. Requires Super Admin bearer token.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Plano Essencial\",\n  \"monthly_price\": 49.90,\n  \"annual_price\": 499.00,\n  \"publish_quota\": 20\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Plan (Super Admin)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/plans/:id",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "plans",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "MON-14 — edits a plan's price/quota going forward; never alters the historical usage counts of organizers already subscribed to it. Requires Super Admin bearer token.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"monthly_price\": 59.90,\n  \"publish_quota\": 30\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Deactivate Plan (Super Admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/plans/:id/deactivate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "plans",
+                    ":id",
+                    "deactivate"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "MON-15 — stops offering the plan to new signups (landing page and any plan picker) while leaving existing subscribers on it undisturbed. Requires Super Admin bearer token."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Admin — Subscription (Organizer)",
+          "item": [
+            {
+              "name": "Get My Subscription (Organizer)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/v1/subscription",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "v1",
+                    "subscription"
+                  ]
+                },
+                "description": "MON-17/MON-18 — the authenticated Venue Admin's or Promoter's own current plan name, price, quota, and \"X of Y publishes used this period,\" with an at-limit flag when usage has reached the quota. Requires an approved admin bearer token (any organizer, not Super-Admin-only)."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -3,6 +3,8 @@
 namespace QOR\App\Domain\Event\UseCase;
 
 use InvalidArgumentException;
+use QOR\App\Domain\Billing\Enum\SubscribableType;
+use QOR\App\Domain\Billing\UseCase\CheckAndIncrementQuota;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
@@ -13,6 +15,7 @@ final class SubmitEventForReview
 {
     public function __construct(
         private readonly EventRepository $events,
+        private readonly CheckAndIncrementQuota $checkAndIncrementQuota,
     ) {
     }
 
@@ -27,6 +30,10 @@ final class SubmitEventForReview
         if (! $organizer->canPublish()) {
             throw new InvalidArgumentException('Sua conta ainda não foi aprovada.');
         }
+
+        $subscribableType = $organizer instanceof Venue ? SubscribableType::Venue : SubscribableType::Promoter;
+
+        $this->checkAndIncrementQuota->execute($subscribableType, (int) $organizer->id);
 
         $event = $event->transitionTo(EventStatus::PendingReview);
 

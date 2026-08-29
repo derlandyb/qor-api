@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use QOR\App\Domain\Billing\Exception\QuotaExceeded;
 use QOR\App\Http\Middleware\EnsureAdminIdentity;
 use QOR\App\Http\Middleware\EnsureFanIdentity;
 use QOR\App\Http\Middleware\EnsureSuperAdmin;
@@ -40,6 +41,16 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json(['message' => 'Recurso não encontrado.'], 404);
+            }
+        });
+
+        // QuotaExceeded is an InvalidArgumentException, so its render
+        // callback must be registered before the generic one below —
+        // Handler::renderViaCallbacks() returns the first matching
+        // callback's response, in registration order.
+        $exceptions->render(function (QuotaExceeded $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => $e->getMessage(), 'code' => 'quota_exceeded'], 422);
             }
         });
 
