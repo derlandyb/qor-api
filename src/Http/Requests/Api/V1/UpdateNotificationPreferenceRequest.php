@@ -21,7 +21,6 @@ class UpdateNotificationPreferenceRequest extends FormRequest
             'email_enabled' => ['sometimes', 'boolean'],
             'silence_all' => ['sometimes', 'boolean'],
             'trigger_nearby_reminder' => ['sometimes', 'boolean'],
-            'trigger_event_changed_cancelled' => ['sometimes', 'boolean'],
             'trigger_friend_interest' => ['sometimes', 'boolean'],
             'trigger_new_regional' => ['sometimes', 'boolean'],
         ];

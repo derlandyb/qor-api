@@ -45,7 +45,9 @@ class NotificationPreferenceController extends Controller
             emailEnabled: (bool) $request->boolean('email_enabled', $existing->emailEnabled),
             silenceAll: (bool) $request->boolean('silence_all', $existing->silenceAll),
             triggerNearbyReminder: (bool) $request->boolean('trigger_nearby_reminder', $existing->triggerNearbyReminder),
-            triggerEventChangedCancelled: (bool) $request->boolean('trigger_event_changed_cancelled', $existing->triggerEventChangedCancelled),
+            // trigger_event_changed_cancelled is always shown but never togglable
+            // (NOTIF-07's always-fires rule) — never read from the request.
+            triggerEventChangedCancelled: $existing->triggerEventChangedCancelled,
             triggerFriendInterest: (bool) $request->boolean('trigger_friend_interest', $existing->triggerFriendInterest),
             triggerNewRegional: (bool) $request->boolean('trigger_new_regional', $existing->triggerNewRegional),
         );
