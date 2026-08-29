@@ -18,5 +18,17 @@ final class Plan
         if ($this->name === '') {
             throw new InvalidArgumentException('O nome do plano não pode ser vazio.');
         }
+
+        if ($this->monthlyPrice < 0) {
+            throw new InvalidArgumentException('O preço mensal do plano não pode ser negativo.');
+        }
+
+        if ($this->annualPrice !== null && $this->annualPrice < 0) {
+            throw new InvalidArgumentException('O preço anual do plano não pode ser negativo.');
+        }
+
+        if ($this->publishQuota !== null && $this->publishQuota < 0) {
+            throw new InvalidArgumentException('A cota de publicações do plano não pode ser negativa.');
+        }
     }
 }
