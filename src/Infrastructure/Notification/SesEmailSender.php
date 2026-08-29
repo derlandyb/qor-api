@@ -2,9 +2,11 @@
 
 namespace QOR\App\Infrastructure\Notification;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
 use QOR\App\Domain\Notification\NotificationSender;
+use Throwable;
 
 /**
  * Sends via Laravel's Mail facade rather than a direct SesClient — the AWS SDK
@@ -32,6 +34,15 @@ class SesEmailSender implements NotificationSender
             );
         }
 
-        Mail::to($email)->send(new NotificationMailable($subject, $body));
+        // Provider-level failures are caught and logged here, never surfaced to the
+        // caller (notifications/design.md's Error Handling Strategy) — a transient
+        // SES outage must not fail the fan-facing request that triggered the send.
+        try {
+            Mail::to($email)->send(new NotificationMailable($subject, $body));
+        } catch (Throwable $e) {
+            Log::error("Falha ao enviar e-mail via SES para o usuário {$userId}.", [
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 }

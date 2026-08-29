@@ -3,9 +3,9 @@
 namespace Tests\Feature\Infrastructure\Notification;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use QOR\App\Infrastructure\Notification\FcmPushSender;
-use RuntimeException;
 use Tests\TestCase;
 
 class FcmPushSenderTest extends TestCase
@@ -56,20 +56,21 @@ class FcmPushSenderTest extends TestCase
         $sender->send(1, ['device_token' => 'device-token-abc']);
     }
 
-    public function test_GIVEN_fcm_responds_with_a_failure_WHEN_sending_THEN_it_throws_loudly(): void
+    public function test_GIVEN_fcm_responds_with_a_failure_WHEN_sending_THEN_it_does_not_throw_and_logs_the_failure(): void
     {
         Http::fake([
             'fcm.googleapis.com/*' => Http::response(['error' => 'InvalidRegistration'], 400),
         ]);
+        Log::spy();
 
         $sender = new FcmPushSender();
-
-        $this->expectException(RuntimeException::class);
 
         $sender->send(1, [
             'device_token' => 'device-token-abc',
             'title' => 'Título',
             'body' => 'Corpo',
         ]);
+
+        Log::shouldHaveReceived('error')->once();
     }
 }
