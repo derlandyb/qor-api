@@ -53,6 +53,7 @@ return [
     'notifications' => [
         'nearby_reminder_lead_hours' => (int) env('QOR_NEARBY_REMINDER_LEAD_HOURS', 24),
         'regional_batch_window_minutes' => (int) env('QOR_REGIONAL_BATCH_WINDOW_MINUTES', 60),
+        'consolidation_window_minutes' => (int) env('QOR_NOTIFICATIONS_CONSOLIDATION_WINDOW_MINUTES', 60),
         'fcm' => [
             'server_key' => env('QOR_FCM_SERVER_KEY'),
             'endpoint' => env('QOR_FCM_ENDPOINT', 'https://fcm.googleapis.com/fcm/send'),

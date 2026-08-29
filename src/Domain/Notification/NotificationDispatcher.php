@@ -17,6 +17,7 @@ final class NotificationDispatcher
         private readonly NotificationLogRepository $logs,
         private readonly NotificationSender $pushSender,
         private readonly NotificationSender $emailSender,
+        private readonly int $consolidationWindowMinutes = 60,
     ) {
     }
 
@@ -40,6 +41,10 @@ final class NotificationDispatcher
         }
 
         if ($this->logs->hasBeenSent($userId, $triggerType, $eventId)) {
+            return;
+        }
+
+        if ($eventId !== null && $this->logs->hasRecentSendForEvent($userId, $eventId, $this->consolidationWindowMinutes)) {
             return;
         }
 

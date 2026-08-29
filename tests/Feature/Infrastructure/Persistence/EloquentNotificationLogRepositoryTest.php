@@ -45,6 +45,30 @@ class EloquentNotificationLogRepositoryTest extends TestCase
         $this->assertFalse($repository->hasBeenSent($user->id, NotificationTriggerType::NearbyReminder, $eventB->id));
     }
 
+    public function test_GIVEN_a_recorded_send_for_a_different_trigger_WHEN_checking_recent_send_for_the_same_fan_and_event_THEN_it_returns_true(): void
+    {
+        $user = UserModel::factory()->create();
+        $event = EventModel::factory()->create();
+        $repository = new EloquentNotificationLogRepository();
+
+        $repository->record($user->id, NotificationTriggerType::NearbyReminder, NotificationChannel::Push, $event->id);
+
+        $this->assertTrue($repository->hasRecentSendForEvent($user->id, $event->id, 60));
+    }
+
+    public function test_GIVEN_a_recorded_send_older_than_the_window_WHEN_checking_recent_send_THEN_it_returns_false(): void
+    {
+        $user = UserModel::factory()->create();
+        $event = EventModel::factory()->create();
+        $repository = new EloquentNotificationLogRepository();
+
+        $repository->record($user->id, NotificationTriggerType::NearbyReminder, NotificationChannel::Push, $event->id);
+        \QOR\App\Infrastructure\Persistence\Eloquent\NotificationLogModel::where('event_id', $event->id)
+            ->update(['sent_at' => now()->subMinutes(120)]);
+
+        $this->assertFalse($repository->hasRecentSendForEvent($user->id, $event->id, 60));
+    }
+
     public function test_GIVEN_a_new_regional_digest_WHEN_recording_it_THEN_the_event_id_is_null(): void
     {
         $user = UserModel::factory()->create();

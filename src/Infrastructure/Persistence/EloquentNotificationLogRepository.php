@@ -18,6 +18,14 @@ class EloquentNotificationLogRepository implements NotificationLogRepository
             ->exists();
     }
 
+    public function hasRecentSendForEvent(int $userId, int $eventId, int $windowMinutes): bool
+    {
+        return NotificationLogModel::where('user_id', $userId)
+            ->where('event_id', $eventId)
+            ->where('sent_at', '>=', now()->subMinutes($windowMinutes))
+            ->exists();
+    }
+
     public function record(
         int $userId,
         NotificationTriggerType $triggerType,

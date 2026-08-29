@@ -46,6 +46,17 @@ final class InMemoryNotificationLogRepository implements NotificationLogReposito
         return false;
     }
 
+    public function hasRecentSendForEvent(int $userId, int $eventId, int $windowMinutes): bool
+    {
+        foreach ($this->sent as $entry) {
+            if ($entry['userId'] === $userId && $entry['eventId'] === $eventId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function record(
         int $userId,
         NotificationTriggerType $triggerType,
@@ -170,6 +181,15 @@ final class NotificationDispatcherTest extends TestCase
     {
         $this->dispatcher->dispatch(1, NotificationTriggerType::NearbyReminder, 10, []);
         $this->dispatcher->dispatch(1, NotificationTriggerType::NearbyReminder, 10, []);
+
+        $this->assertCount(1, $this->pushSender->calls);
+        $this->assertCount(1, $this->emailSender->calls);
+    }
+
+    public function test_GIVEN_a_different_trigger_for_the_same_fan_and_event_WHEN_dispatching_within_the_consolidation_window_THEN_it_consolidates_to_a_single_send(): void
+    {
+        $this->dispatcher->dispatch(1, NotificationTriggerType::NearbyReminder, 10, []);
+        $this->dispatcher->dispatch(1, NotificationTriggerType::FriendInterest, 10, []);
 
         $this->assertCount(1, $this->pushSender->calls);
         $this->assertCount(1, $this->emailSender->calls);
