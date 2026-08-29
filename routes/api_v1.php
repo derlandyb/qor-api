@@ -15,6 +15,7 @@ use QOR\App\Http\Controllers\Api\V1\AuthController;
 use QOR\App\Http\Controllers\Api\V1\EventController;
 use QOR\App\Http\Controllers\Api\V1\FavoriteController;
 use QOR\App\Http\Controllers\Api\V1\FriendshipController;
+use QOR\App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use QOR\App\Http\Controllers\Api\V1\ProfileController;
 use QOR\App\Http\Controllers\Api\V1\ShareController;
 
@@ -60,6 +61,8 @@ Route::prefix('profile')->middleware(['auth:fan', 'guard.fan'])->group(function 
     Route::post('/data-rights/delete', [ProfileController::class, 'dataRightsDelete']);
     Route::post('/data-rights/revoke', [ProfileController::class, 'dataRightsRevoke']);
     Route::get('/favorites', [FavoriteController::class, 'index']);
+    Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);
+    Route::patch('/notification-preferences', [NotificationPreferenceController::class, 'update']);
 });
 
 Route::prefix('friends')->middleware(['auth:fan', 'guard.fan'])->group(function () {
