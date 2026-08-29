@@ -78,4 +78,17 @@ final class SendFriendRequestTest extends TestCase
 
         $useCase->execute(1, 2);
     }
+
+    public function test_GIVEN_the_requester_and_recipient_are_the_same_user_WHEN_sending_a_request_THEN_it_throws(): void
+    {
+        $repository = Mockery::mock(FriendshipRepository::class);
+        $repository->shouldNotReceive('findBetween');
+        $repository->shouldNotReceive('create');
+
+        $useCase = new SendFriendRequest($repository);
+
+        $this->expectException(DomainException::class);
+
+        $useCase->execute(1, 1);
+    }
 }

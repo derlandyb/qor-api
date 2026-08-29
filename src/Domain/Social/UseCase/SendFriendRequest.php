@@ -16,6 +16,10 @@ final class SendFriendRequest
 
     public function execute(int $requesterId, int $recipientId): Friendship
     {
+        if ($requesterId === $recipientId) {
+            throw new DomainException('Não é possível enviar uma solicitação de amizade para si mesmo.');
+        }
+
         $existing = $this->friendships->findBetween($requesterId, $recipientId);
 
         if ($existing === null) {
