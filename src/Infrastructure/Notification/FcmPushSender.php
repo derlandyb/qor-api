@@ -27,9 +27,14 @@ class FcmPushSender implements NotificationSender
             );
         }
 
+        /** @var string $serverKey */
+        $serverKey = config('qor.notifications.fcm.server_key');
+        /** @var string $endpoint */
+        $endpoint = config('qor.notifications.fcm.endpoint');
+
         $response = Http::withHeaders([
-            'Authorization' => 'key='.config('qor.notifications.fcm.server_key'),
-        ])->post(config('qor.notifications.fcm.endpoint'), [
+            'Authorization' => "key={$serverKey}",
+        ])->post($endpoint, [
             'to' => $deviceToken,
             'notification' => [
                 'title' => $title,
