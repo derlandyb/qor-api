@@ -11,6 +11,7 @@ use PHPUnit\Framework\TestCase;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Billing\Enum\SubscribableType;
 use QOR\App\Domain\Billing\Enum\SubscriptionStatus;
+use QOR\App\Domain\Billing\Exception\QuotaExceeded;
 use QOR\App\Domain\Billing\Plan;
 use QOR\App\Domain\Billing\PlanRepository;
 use QOR\App\Domain\Billing\Subscription;
@@ -97,7 +98,7 @@ class SubmitEventForReviewTest extends TestCase
 
         $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
         $subscriptionRepository->shouldReceive('findBySubscribable')->with(SubscribableType::Venue, 1)->andReturn($subscription);
-        $subscriptionRepository->shouldReceive('save')->andReturnUsing(fn (Subscription $s) => $s);
+        $subscriptionRepository->shouldReceive('incrementUsageIfUnderQuota')->with(SubscribableType::Venue, 1)->andReturn(true);
 
         $planRepository = Mockery::mock(PlanRepository::class);
         $planRepository->shouldReceive('findById')->with(1)->andReturn($plan);
@@ -209,10 +210,7 @@ class SubmitEventForReviewTest extends TestCase
 
         $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
         $subscriptionRepository->shouldReceive('findBySubscribable')->once()->with(SubscribableType::Venue, 1)->andReturn($subscription);
-        $subscriptionRepository->shouldReceive('save')
-            ->once()
-            ->with(Mockery::on(fn (Subscription $s) => $s->publishesUsedThisPeriod === 3))
-            ->andReturnUsing(fn (Subscription $s) => $s);
+        $subscriptionRepository->shouldReceive('incrementUsageIfUnderQuota')->once()->with(SubscribableType::Venue, 1)->andReturn(true);
 
         $planRepository = Mockery::mock(PlanRepository::class);
         $planRepository->shouldReceive('findById')->once()->with(1)->andReturn($plan);
@@ -237,14 +235,14 @@ class SubmitEventForReviewTest extends TestCase
 
         $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
         $subscriptionRepository->shouldReceive('findBySubscribable')->once()->with(SubscribableType::Venue, 1)->andReturn($subscription);
-        $subscriptionRepository->shouldNotReceive('save');
+        $subscriptionRepository->shouldReceive('incrementUsageIfUnderQuota')->once()->with(SubscribableType::Venue, 1)->andReturn(false);
 
         $planRepository = Mockery::mock(PlanRepository::class);
         $planRepository->shouldReceive('findById')->once()->with(1)->andReturn($plan);
 
         $useCase = new SubmitEventForReview($repository, new CheckAndIncrementQuota($subscriptionRepository, $planRepository));
 
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(QuotaExceeded::class);
         $this->expectExceptionMessage('Você atingiu o limite de publicações do seu plano.');
 
         $useCase->execute(5, $venue);
@@ -266,10 +264,7 @@ class SubmitEventForReviewTest extends TestCase
 
         $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
         $subscriptionRepository->shouldReceive('findBySubscribable')->once()->with(SubscribableType::Venue, 1)->andReturn($subscription);
-        $subscriptionRepository->shouldReceive('save')
-            ->once()
-            ->with(Mockery::on(fn (Subscription $s) => $s->publishesUsedThisPeriod === 10000))
-            ->andReturnUsing(fn (Subscription $s) => $s);
+        $subscriptionRepository->shouldReceive('incrementUsageIfUnderQuota')->once()->with(SubscribableType::Venue, 1)->andReturn(true);
 
         $planRepository = Mockery::mock(PlanRepository::class);
         $planRepository->shouldReceive('findById')->once()->with(1)->andReturn($plan);
