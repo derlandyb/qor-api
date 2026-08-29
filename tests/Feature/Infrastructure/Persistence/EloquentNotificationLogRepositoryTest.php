@@ -69,6 +69,28 @@ class EloquentNotificationLogRepositoryTest extends TestCase
         $this->assertFalse($repository->hasRecentSendForEvent($user->id, $event->id, 60));
     }
 
+    public function test_GIVEN_a_regional_digest_sent_within_the_batch_window_WHEN_checking_has_been_sent_for_a_new_digest_THEN_it_returns_true(): void
+    {
+        $user = UserModel::factory()->create();
+        $repository = new EloquentNotificationLogRepository();
+
+        $repository->record($user->id, NotificationTriggerType::NewRegional, NotificationChannel::Push);
+
+        $this->assertTrue($repository->hasBeenSent($user->id, NotificationTriggerType::NewRegional));
+    }
+
+    public function test_GIVEN_a_regional_digest_sent_before_the_batch_window_WHEN_checking_has_been_sent_for_a_new_digest_THEN_it_returns_false(): void
+    {
+        $user = UserModel::factory()->create();
+        $repository = new EloquentNotificationLogRepository();
+
+        $repository->record($user->id, NotificationTriggerType::NewRegional, NotificationChannel::Push);
+        \QOR\App\Infrastructure\Persistence\Eloquent\NotificationLogModel::where('user_id', $user->id)
+            ->update(['sent_at' => now()->subMinutes(120)]);
+
+        $this->assertFalse($repository->hasBeenSent($user->id, NotificationTriggerType::NewRegional));
+    }
+
     public function test_GIVEN_a_new_regional_digest_WHEN_recording_it_THEN_the_event_id_is_null(): void
     {
         $user = UserModel::factory()->create();

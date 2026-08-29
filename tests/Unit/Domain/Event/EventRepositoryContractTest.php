@@ -56,6 +56,18 @@ final class InMemoryEventRepository implements EventRepository
         ));
     }
 
+    public function findRecentlyPublished(City $city, DateTimeImmutable $since): array
+    {
+        // This fake has no updated_at concept on the domain Event itself (that's an
+        // Eloquent-model-only column) — recency filtering is exercised by the real
+        // adapter's own integration test, not this contract test.
+        return array_values(array_filter(
+            $this->events,
+            fn (Event $event) => $event->status === \QOR\App\Domain\Event\Enum\EventStatus::Published
+                && $event->city === $city,
+        ));
+    }
+
     public function save(Event $event): Event
     {
         $id = $event->id ?? $this->nextId++;

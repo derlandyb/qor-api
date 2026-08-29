@@ -8,7 +8,6 @@ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
-use QOR\App\Domain\Event\EventPage;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Notification\Enum\NotificationChannel;
 use QOR\App\Domain\Notification\Enum\NotificationTriggerType;
@@ -129,8 +128,9 @@ final class DetectRegionalPublishesTest extends TestCase
         $addresses->add($this->address(1, 10));
 
         $events = Mockery::mock(EventRepository::class);
-        $events->shouldReceive('findUpcoming')->once()->with(City::Vitoria, null, null)
-            ->andReturn(new EventPage(items: [$this->event(1), $this->event(2), $this->event(3)], nextCursor: null));
+        $events->shouldReceive('findRecentlyPublished')->once()
+            ->with(City::Vitoria, Mockery::type(DateTimeImmutable::class))
+            ->andReturn([$this->event(1), $this->event(2), $this->event(3)]);
 
         $push = new SpyNotificationSenderForRegional();
         $email = new SpyNotificationSenderForRegional();
@@ -154,7 +154,7 @@ final class DetectRegionalPublishesTest extends TestCase
         $addresses->add($this->address(1, null));
 
         $events = Mockery::mock(EventRepository::class);
-        $events->shouldNotReceive('findUpcoming');
+        $events->shouldNotReceive('findRecentlyPublished');
 
         $push = new SpyNotificationSenderForRegional();
         $email = new SpyNotificationSenderForRegional();
@@ -177,8 +177,9 @@ final class DetectRegionalPublishesTest extends TestCase
         $addresses->add($this->address(1, 10));
 
         $events = Mockery::mock(EventRepository::class);
-        $events->shouldReceive('findUpcoming')->once()->with(City::Vitoria, null, null)
-            ->andReturn(new EventPage(items: [], nextCursor: null));
+        $events->shouldReceive('findRecentlyPublished')->once()
+            ->with(City::Vitoria, Mockery::type(DateTimeImmutable::class))
+            ->andReturn([]);
 
         $push = new SpyNotificationSenderForRegional();
         $email = new SpyNotificationSenderForRegional();

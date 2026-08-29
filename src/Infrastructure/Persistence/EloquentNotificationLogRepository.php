@@ -12,9 +12,23 @@ class EloquentNotificationLogRepository implements NotificationLogRepository
 {
     public function hasBeenSent(int $userId, NotificationTriggerType $triggerType, ?int $eventId = null): bool
     {
-        return NotificationLogModel::where('user_id', $userId)
-            ->where('trigger_type', $triggerType->value)
-            ->where('event_id', $eventId)
+        $query = NotificationLogModel::where('user_id', $userId)
+            ->where('trigger_type', $triggerType->value);
+
+        if ($eventId !== null) {
+            return $query->where('event_id', $eventId)->exists();
+        }
+
+        // Event-less triggers (currently only NewRegional digests) have no single
+        // event to key dedup on. An unconditional exists() check here would
+        // permanently silence the fan after the first successful digest — bound
+        // it to the regional batch window instead, so a later scan's genuinely
+        // new digest isn't swallowed (NOTIF-16–19).
+        /** @var int $windowMinutes */
+        $windowMinutes = config('qor.notifications.regional_batch_window_minutes');
+
+        return $query->whereNull('event_id')
+            ->where('sent_at', '>=', now()->subMinutes($windowMinutes))
             ->exists();
     }
 
