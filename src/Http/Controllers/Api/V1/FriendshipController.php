@@ -34,7 +34,7 @@ class FriendshipController extends Controller
 
         $friendship = $this->sendFriendRequest->execute((int) $model->id, $request->recipientUserId());
 
-        return response()->json(['data' => $this->friendshipToArray($friendship, (int) $model->id)], 201);
+        return response()->json(['data' => $this->friendshipToArray($friendship, (int) $model->id, $this->users->findByIds([$this->otherUserId($friendship, (int) $model->id)]))], 201);
     }
 
     public function incoming(Request $request): JsonResponse
@@ -43,10 +43,11 @@ class FriendshipController extends Controller
         $model = $request->user();
 
         $requests = $this->respondToFriendRequest->listIncoming((int) $model->id);
+        $otherUsers = $this->users->findByIds($this->otherUserIds($requests, (int) $model->id));
 
         return response()->json([
             'data' => array_map(
-                fn (Friendship $friendship) => $this->friendshipToArray($friendship, (int) $model->id),
+                fn (Friendship $friendship) => $this->friendshipToArray($friendship, (int) $model->id, $otherUsers),
                 $requests,
             ),
         ]);
@@ -59,7 +60,7 @@ class FriendshipController extends Controller
 
         $friendship = $this->respondToFriendRequest->accept($id, (int) $model->id);
 
-        return response()->json(['data' => $this->friendshipToArray($friendship, (int) $model->id)]);
+        return response()->json(['data' => $this->friendshipToArray($friendship, (int) $model->id, $this->users->findByIds([$this->otherUserId($friendship, (int) $model->id)]))]);
     }
 
     public function reject(Request $request, int $id): JsonResponse
@@ -99,25 +100,43 @@ class FriendshipController extends Controller
      */
     private function pageToArray(FriendPage $page, int $currentUserId): array
     {
+        $otherUsers = $this->users->findByIds($this->otherUserIds($page->items, $currentUserId));
+
         return [
             'data' => array_map(
-                fn (Friendship $friendship) => $this->friendshipToArray($friendship, $currentUserId),
+                fn (Friendship $friendship) => $this->friendshipToArray($friendship, $currentUserId, $otherUsers),
                 $page->items,
             ),
             'next_cursor' => $page->nextCursor,
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function friendshipToArray(Friendship $friendship, int $currentUserId): array
+    private function otherUserId(Friendship $friendship, int $currentUserId): int
     {
-        $otherUserId = $friendship->requesterId === $currentUserId
+        return $friendship->requesterId === $currentUserId
             ? $friendship->recipientId
             : $friendship->requesterId;
+    }
 
-        $otherUser = $this->users->findById($otherUserId);
+    /**
+     * @param list<Friendship> $friendships
+     * @return list<int>
+     */
+    private function otherUserIds(array $friendships, int $currentUserId): array
+    {
+        return array_values(array_unique(array_map(
+            fn (Friendship $friendship) => $this->otherUserId($friendship, $currentUserId),
+            $friendships,
+        )));
+    }
+
+    /**
+     * @param array<int, User> $otherUsers
+     * @return array<string, mixed>
+     */
+    private function friendshipToArray(Friendship $friendship, int $currentUserId, array $otherUsers): array
+    {
+        $otherUser = $otherUsers[$this->otherUserId($friendship, $currentUserId)] ?? null;
 
         return [
             'id' => $friendship->id,
