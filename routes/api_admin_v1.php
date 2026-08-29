@@ -16,6 +16,7 @@ use QOR\App\Http\Controllers\Api\AdminV1\AdminAuthController;
 use QOR\App\Http\Controllers\Api\AdminV1\DashboardController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventApprovalController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
+use QOR\App\Http\Controllers\Api\AdminV1\PlanController;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
 use QOR\App\Http\Controllers\Api\AdminV1\VenueController;
 
@@ -50,4 +51,11 @@ Route::prefix('approvals')->middleware(['auth:admin', 'guard.admin', 'guard.supe
 
     Route::get('/events', [EventApprovalController::class, 'index']);
     Route::post('/events/{id}/decide', [EventApprovalController::class, 'decide'])->whereNumber('id');
+});
+
+Route::prefix('plans')->middleware(['auth:admin', 'guard.admin', 'guard.super-admin'])->group(function () {
+    Route::get('/', [PlanController::class, 'index']);
+    Route::post('/', [PlanController::class, 'store']);
+    Route::patch('/{id}', [PlanController::class, 'update'])->whereNumber('id');
+    Route::post('/{id}/deactivate', [PlanController::class, 'deactivate'])->whereNumber('id');
 });

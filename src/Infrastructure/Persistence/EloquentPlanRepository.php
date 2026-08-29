@@ -27,6 +27,18 @@ class EloquentPlanRepository implements PlanRepository
         return $plans;
     }
 
+    public function findAll(): array
+    {
+        /** @var list<Plan> $plans */
+        $plans = PlanModel::orderBy('id')
+            ->get()
+            ->map(fn (PlanModel $model): Plan => $this->toDomain($model))
+            ->values()
+            ->all();
+
+        return $plans;
+    }
+
     public function findDefaultFree(): ?Plan
     {
         $model = PlanModel::where('is_default_free', true)->first();
