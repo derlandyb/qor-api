@@ -18,6 +18,7 @@ use QOR\App\Http\Controllers\Api\AdminV1\EventApprovalController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
 use QOR\App\Http\Controllers\Api\AdminV1\PlanController;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
+use QOR\App\Http\Controllers\Api\AdminV1\SubscriptionController;
 use QOR\App\Http\Controllers\Api\AdminV1\VenueController;
 
 Route::middleware('throttle:qor-auth')->group(function () {
@@ -33,6 +34,7 @@ Route::middleware(['auth:admin', 'guard.admin'])->group(function () {
     Route::patch('/venues/me', [VenueController::class, 'update']);
     Route::patch('/promoters/me', [PromoterController::class, 'update']);
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/subscription', [SubscriptionController::class, 'show']);
 });
 
 Route::prefix('events')->middleware(['auth:admin', 'guard.admin'])->group(function () {
