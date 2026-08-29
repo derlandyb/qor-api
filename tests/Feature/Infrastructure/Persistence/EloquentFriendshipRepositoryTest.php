@@ -130,4 +130,23 @@ class EloquentFriendshipRepositoryTest extends TestCase
 
         $this->assertNull($repository->findBetween($a->id, $b->id));
     }
+
+    public function test_GIVEN_an_existing_friendship_row_WHEN_finding_it_by_id_THEN_it_is_returned(): void
+    {
+        $model = FriendshipModel::factory()->create();
+        $repository = new EloquentFriendshipRepository();
+
+        $friendship = $repository->findById($model->id);
+
+        $this->assertNotNull($friendship);
+        $this->assertSame($model->requester_id, $friendship->requesterId);
+        $this->assertSame($model->recipient_id, $friendship->recipientId);
+    }
+
+    public function test_GIVEN_no_friendship_row_WHEN_finding_it_by_id_THEN_it_returns_null(): void
+    {
+        $repository = new EloquentFriendshipRepository();
+
+        $this->assertNull($repository->findById(999999));
+    }
 }

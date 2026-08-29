@@ -20,6 +20,10 @@ final class DetectNearbyReminders
         private readonly UserAddressRepository $addresses,
         private readonly FavoriteRepository $favorites,
         private readonly NotificationDispatcher $dispatcher,
+        // Default mirrors config('qor.notifications.nearby_reminder_lead_hours')'s own
+        // default (24) — the domain layer can't call config() directly (§8.5); the real
+        // value is wired at the composition root (scheduled-job binding, T85), same
+        // pattern as NotificationDispatcher's $consolidationWindowMinutes.
         private readonly int $leadHours = 24,
     ) {
     }
