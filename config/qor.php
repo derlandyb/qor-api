@@ -52,7 +52,9 @@ return [
     */
     'notifications' => [
         'nearby_reminder_lead_hours' => (int) env('QOR_NEARBY_REMINDER_LEAD_HOURS', 24),
+        'nearby_reminder_scan_interval_minutes' => (int) env('QOR_NEARBY_REMINDER_SCAN_INTERVAL_MINUTES', 60),
         'regional_batch_window_minutes' => (int) env('QOR_REGIONAL_BATCH_WINDOW_MINUTES', 60),
+        'regional_publish_scan_interval_minutes' => (int) env('QOR_REGIONAL_PUBLISH_SCAN_INTERVAL_MINUTES', 15),
         'consolidation_window_minutes' => (int) env('QOR_NOTIFICATIONS_CONSOLIDATION_WINDOW_MINUTES', 60),
         'fcm' => [
             'server_key' => env('QOR_FCM_SERVER_KEY'),

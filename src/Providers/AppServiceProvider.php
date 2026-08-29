@@ -17,6 +17,8 @@ use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Notification\NotificationDispatcher;
 use QOR\App\Domain\Notification\NotificationLogRepository;
 use QOR\App\Domain\Notification\NotificationPreferenceRepository;
+use QOR\App\Domain\Notification\UseCase\DetectNearbyReminders;
+use QOR\App\Domain\Notification\UseCase\DetectRegionalPublishes;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\PasswordHasher;
@@ -100,6 +102,34 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(FcmPushSender::class),
                 $app->make(SesEmailSender::class),
                 $consolidationWindowMinutes,
+            );
+        });
+
+        // Scheduled detectors (T85, routes/console.php) — leadHours/
+        // batchWindowMinutes default to the same values as the use cases'
+        // own constructor defaults, but the domain layer can't call
+        // config() itself (§8.5), so the real values are wired here.
+        $this->app->bind(DetectNearbyReminders::class, function ($app) {
+            /** @var int $leadHours */
+            $leadHours = config('qor.notifications.nearby_reminder_lead_hours');
+
+            return new DetectNearbyReminders(
+                $app->make(UserAddressRepository::class),
+                $app->make(FavoriteRepository::class),
+                $app->make(NotificationDispatcher::class),
+                $leadHours,
+            );
+        });
+
+        $this->app->bind(DetectRegionalPublishes::class, function ($app) {
+            /** @var int $batchWindowMinutes */
+            $batchWindowMinutes = config('qor.notifications.regional_batch_window_minutes');
+
+            return new DetectRegionalPublishes(
+                $app->make(UserAddressRepository::class),
+                $app->make(EventRepository::class),
+                $app->make(NotificationDispatcher::class),
+                $batchWindowMinutes,
             );
         });
     }
