@@ -2,9 +2,11 @@
 
 namespace QOR\App\Infrastructure\Persistence;
 
+use Illuminate\Support\Facades\DB;
 use QOR\App\Domain\Billing\Enum\SubscribableType;
 use QOR\App\Domain\Billing\Subscription;
 use QOR\App\Domain\Billing\SubscriptionRepository;
+use QOR\App\Infrastructure\Persistence\Eloquent\PlanModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\SubscriptionModel;
 
 class EloquentSubscriptionRepository implements SubscriptionRepository
@@ -16,6 +18,35 @@ class EloquentSubscriptionRepository implements SubscriptionRepository
             ->first();
 
         return $model ? $this->toDomain($model) : null;
+    }
+
+    public function incrementUsageIfUnderQuota(SubscribableType $type, int $subscribableId): bool
+    {
+        return DB::transaction(function () use ($type, $subscribableId) {
+            $model = SubscriptionModel::where('subscribable_type', $type->value)
+                ->where('subscribable_id', $subscribableId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($model === null) {
+                return false;
+            }
+
+            $plan = PlanModel::find($model->plan_id);
+
+            if ($plan === null) {
+                return false;
+            }
+
+            if ($plan->publish_quota !== null && $model->publishes_used_this_period >= $plan->publish_quota) {
+                return false;
+            }
+
+            $model->publishes_used_this_period++;
+            $model->save();
+
+            return true;
+        });
     }
 
     public function save(Subscription $subscription): Subscription

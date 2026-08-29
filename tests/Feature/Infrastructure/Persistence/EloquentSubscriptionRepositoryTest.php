@@ -4,6 +4,7 @@ namespace Tests\Feature\Infrastructure\Persistence;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use QOR\App\Domain\Billing\Enum\SubscribableType;
+use QOR\App\Infrastructure\Persistence\Eloquent\PlanModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\SubscriptionModel;
 use QOR\App\Infrastructure\Persistence\EloquentSubscriptionRepository;
 use Tests\TestCase;
@@ -47,5 +48,59 @@ class EloquentSubscriptionRepositoryTest extends TestCase
 
         $this->assertSame(3, $updated->publishesUsedThisPeriod);
         $this->assertDatabaseHas('subscriptions', ['id' => $model->id, 'publishes_used_this_period' => 3]);
+    }
+
+    public function test_GIVEN_usage_below_the_plans_quota_WHEN_incrementing_if_under_quota_THEN_it_returns_true_and_increments_the_row(): void
+    {
+        $plan = PlanModel::factory()->create(['publish_quota' => 5]);
+        $model = SubscriptionModel::factory()->create([
+            'subscribable_type' => SubscribableType::Venue->value,
+            'subscribable_id' => 42,
+            'plan_id' => $plan->id,
+            'publishes_used_this_period' => 2,
+        ]);
+
+        $repository = new EloquentSubscriptionRepository();
+
+        $result = $repository->incrementUsageIfUnderQuota(SubscribableType::Venue, 42);
+
+        $this->assertTrue($result);
+        $this->assertDatabaseHas('subscriptions', ['id' => $model->id, 'publishes_used_this_period' => 3]);
+    }
+
+    public function test_GIVEN_usage_already_at_the_plans_quota_WHEN_incrementing_if_under_quota_THEN_it_returns_false_and_leaves_the_row_unchanged(): void
+    {
+        $plan = PlanModel::factory()->create(['publish_quota' => 5]);
+        $model = SubscriptionModel::factory()->create([
+            'subscribable_type' => SubscribableType::Venue->value,
+            'subscribable_id' => 42,
+            'plan_id' => $plan->id,
+            'publishes_used_this_period' => 5,
+        ]);
+
+        $repository = new EloquentSubscriptionRepository();
+
+        $result = $repository->incrementUsageIfUnderQuota(SubscribableType::Venue, 42);
+
+        $this->assertFalse($result);
+        $this->assertDatabaseHas('subscriptions', ['id' => $model->id, 'publishes_used_this_period' => 5]);
+    }
+
+    public function test_GIVEN_a_plan_with_no_quota_WHEN_incrementing_if_under_quota_THEN_it_always_returns_true_and_increments(): void
+    {
+        $plan = PlanModel::factory()->create(['publish_quota' => null]);
+        $model = SubscriptionModel::factory()->create([
+            'subscribable_type' => SubscribableType::Venue->value,
+            'subscribable_id' => 42,
+            'plan_id' => $plan->id,
+            'publishes_used_this_period' => 9999,
+        ]);
+
+        $repository = new EloquentSubscriptionRepository();
+
+        $result = $repository->incrementUsageIfUnderQuota(SubscribableType::Venue, 42);
+
+        $this->assertTrue($result);
+        $this->assertDatabaseHas('subscriptions', ['id' => $model->id, 'publishes_used_this_period' => 10000]);
     }
 }
