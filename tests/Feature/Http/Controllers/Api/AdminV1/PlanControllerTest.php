@@ -116,6 +116,18 @@ class PlanControllerTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_GIVEN_a_non_super_admin_forging_a_super_admin_permissions_claim_WHEN_attempting_plan_crud_THEN_it_is_still_rejected_with_403(): void
+    {
+        $admin = AdminUserModel::factory()->create();
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        $response = $this->getJson('/api/admin/v1/plans?permissions[]=plans.manage', [
+            'X-Permissions' => 'plans.manage',
+        ]);
+
+        $response->assertStatus(403);
+    }
+
     public function test_GIVEN_a_fan_token_WHEN_attempting_plan_crud_THEN_it_is_rejected(): void
     {
         $fan = UserModel::factory()->create();
