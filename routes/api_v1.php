@@ -63,6 +63,10 @@ Route::prefix('profile')->middleware(['auth:fan', 'guard.fan'])->group(function 
     Route::get('/favorites', [FavoriteController::class, 'index']);
     Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);
     Route::patch('/notification-preferences', [NotificationPreferenceController::class, 'update']);
+    Route::get('/address', [ProfileController::class, 'showAddress']);
+    Route::patch('/address', [ProfileController::class, 'updateAddress']);
+    Route::get('/preferences', [ProfileController::class, 'showPreferences']);
+    Route::patch('/preferences', [ProfileController::class, 'updatePreferences']);
 });
 
 Route::prefix('friends')->middleware(['auth:fan', 'guard.fan'])->group(function () {

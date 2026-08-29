@@ -4,10 +4,12 @@ namespace Tests\Feature\Http\Controllers\Api\V1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use QOR\App\Domain\User\Enum\ConsentType;
 use QOR\App\Infrastructure\Persistence\Eloquent\ConsentRecordModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\UserAddressModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
 use Tests\TestCase;
 
@@ -121,5 +123,85 @@ class ProfileControllerTest extends TestCase
             'consent_type' => ConsentType::Location->value,
             'revoked_at' => null,
         ]);
+    }
+
+    public function test_GIVEN_no_address_yet_WHEN_viewing_the_address_THEN_it_returns_null(): void
+    {
+        $user = UserModel::factory()->create();
+
+        $response = $this->withHeaders($this->authHeader($user))->getJson('/api/v1/profile/address');
+
+        $response->assertStatus(200)->assertJsonPath('data', null);
+    }
+
+    public function test_GIVEN_a_manual_address_WHEN_setting_it_THEN_it_persists(): void
+    {
+        $user = UserModel::factory()->create();
+
+        $response = $this->withHeaders($this->authHeader($user))
+            ->patchJson('/api/v1/profile/address', [
+                'city' => 'vitoria',
+                'state' => 'ES',
+                'street' => 'Rua das Flores',
+                'number' => '123',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.city', 'vitoria')
+            ->assertJsonPath('data.source', 'manual');
+        $this->assertDatabaseHas('user_addresses', [
+            'user_id' => $user->id,
+            'city' => 'vitoria',
+            'street' => 'Rua das Flores',
+        ]);
+    }
+
+    public function test_GIVEN_an_existing_address_WHEN_updating_it_again_THEN_it_replaces_the_previous_one(): void
+    {
+        $user = UserModel::factory()->create();
+        UserAddressModel::factory()->create(['user_id' => $user->id, 'city' => 'serra']);
+
+        $response = $this->withHeaders($this->authHeader($user))
+            ->patchJson('/api/v1/profile/address', ['city' => 'vila_velha', 'state' => 'ES']);
+
+        $response->assertStatus(200)->assertJsonPath('data.city', 'vila_velha');
+        $this->assertSame(1, UserAddressModel::where('user_id', $user->id)->count());
+    }
+
+    public function test_GIVEN_no_preferences_yet_WHEN_viewing_preferences_THEN_it_returns_empty_defaults(): void
+    {
+        $user = UserModel::factory()->create();
+
+        $response = $this->withHeaders($this->authHeader($user))->getJson('/api/v1/profile/preferences');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.genre_ids', [])
+            ->assertJsonPath('data.radius_km', null);
+    }
+
+    public function test_GIVEN_favorite_genres_and_a_radius_WHEN_updating_preferences_THEN_they_persist(): void
+    {
+        $user = UserModel::factory()->create();
+        UserAddressModel::factory()->create(['user_id' => $user->id]);
+        $genreId = DB::table('genres')->insertGetId([
+            'name' => 'Rock', 'slug' => 'rock-'.$user->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $response = $this->withHeaders($this->authHeader($user))
+            ->patchJson('/api/v1/profile/preferences', ['genre_ids' => [$genreId], 'radius_km' => 15]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.genre_ids', [$genreId])
+            ->assertJsonPath('data.radius_km', 15);
+    }
+
+    public function test_GIVEN_an_invalid_genre_id_WHEN_updating_preferences_THEN_it_is_rejected(): void
+    {
+        $user = UserModel::factory()->create();
+
+        $response = $this->withHeaders($this->authHeader($user))
+            ->patchJson('/api/v1/profile/preferences', ['genre_ids' => [999999]]);
+
+        $response->assertStatus(422);
     }
 }
