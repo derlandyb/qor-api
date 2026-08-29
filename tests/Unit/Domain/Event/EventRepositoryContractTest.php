@@ -39,6 +39,14 @@ final class InMemoryEventRepository implements EventRepository
         ));
     }
 
+    public function findByIds(array $ids): array
+    {
+        return array_values(array_filter(
+            $this->events,
+            fn (Event $event) => in_array($event->id, $ids, true),
+        ));
+    }
+
     public function findPublishedPastEnd(): array
     {
         return array_values(array_filter(

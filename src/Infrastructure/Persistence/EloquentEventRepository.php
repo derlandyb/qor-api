@@ -67,6 +67,17 @@ class EloquentEventRepository implements EventRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    public function findByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $models = EventModel::whereIn('id', $ids)->get();
+
+        return array_values($models->map(fn (EventModel $model) => $this->toDomain($model))->all());
+    }
+
     public function findByCreator(EventCreatedByType $createdByType, int $createdById): array
     {
         $models = EventModel::where('created_by_type', $createdByType->value)

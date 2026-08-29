@@ -12,7 +12,7 @@ use QOR\App\Infrastructure\Persistence\Eloquent\FavoriteModel;
 class EloquentFavoriteRepository implements FavoriteRepository
 {
     public function __construct(
-        private readonly EventRepository $eventRepository = new EloquentEventRepository(),
+        private readonly EventRepository $eventRepository,
     ) {
     }
 
@@ -71,13 +71,20 @@ class EloquentFavoriteRepository implements FavoriteRepository
             $nextCursor = $this->encodeCursor($last->created_at->toIso8601String(), $last->id);
         }
 
-        $items = array_map(
-            fn (FavoriteModel $favorite) => $this->eventRepository->findById($favorite->event_id),
+        /** @var list<int> $eventIds */
+        $eventIds = array_values($models->pluck('event_id')->all());
+        $eventsById = [];
+        foreach ($this->eventRepository->findByIds($eventIds) as $event) {
+            $eventsById[$event->id] = $event;
+        }
+
+        $items = array_values(array_filter(array_map(
+            fn (FavoriteModel $favorite) => $eventsById[$favorite->event_id] ?? null,
             $models->all(),
-        );
+        )));
 
         return new FavoritePage(
-            items: array_values(array_filter($items, fn ($event) => $event !== null)),
+            items: $items,
             nextCursor: $nextCursor,
         );
     }

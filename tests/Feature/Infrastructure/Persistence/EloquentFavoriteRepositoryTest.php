@@ -8,6 +8,7 @@ use QOR\App\Domain\Social\Enum\FavoriteState;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\FavoriteModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
+use QOR\App\Infrastructure\Persistence\EloquentEventRepository;
 use QOR\App\Infrastructure\Persistence\EloquentFavoriteRepository;
 use Tests\TestCase;
 
@@ -20,7 +21,7 @@ class EloquentFavoriteRepositoryTest extends TestCase
         $user = UserModel::factory()->create();
         $event = EventModel::factory()->published()->create();
 
-        $repository = new EloquentFavoriteRepository();
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
 
         $state = $repository->toggle($user->id, $event->id);
 
@@ -34,7 +35,7 @@ class EloquentFavoriteRepositoryTest extends TestCase
         $event = EventModel::factory()->published()->create();
         FavoriteModel::create(['user_id' => $user->id, 'event_id' => $event->id, 'created_at' => now()]);
 
-        $repository = new EloquentFavoriteRepository();
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
 
         $state = $repository->toggle($user->id, $event->id);
 
@@ -47,7 +48,7 @@ class EloquentFavoriteRepositoryTest extends TestCase
         $user = UserModel::factory()->create();
         $event = EventModel::factory()->published()->create();
 
-        $repository = new EloquentFavoriteRepository();
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
 
         $repository->toggle($user->id, $event->id);
         $repository->toggle($user->id, $event->id);
@@ -64,7 +65,7 @@ class EloquentFavoriteRepositoryTest extends TestCase
         FavoriteModel::create(['user_id' => $user->id, 'event_id' => $published->id, 'created_at' => now()]);
         FavoriteModel::create(['user_id' => $user->id, 'event_id' => $draft->id, 'created_at' => now()]);
 
-        $repository = new EloquentFavoriteRepository();
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
 
         $page = $repository->listForUser($user->id, null);
 
@@ -87,7 +88,7 @@ class EloquentFavoriteRepositoryTest extends TestCase
             ]);
         }
 
-        $repository = new EloquentFavoriteRepository();
+        $repository = new EloquentFavoriteRepository(new EloquentEventRepository());
 
         $firstPage = $repository->listForUser($user->id, null);
         $this->assertCount(2, $firstPage->items);
