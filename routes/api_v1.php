@@ -16,12 +16,14 @@ use QOR\App\Http\Controllers\Api\V1\EventController;
 use QOR\App\Http\Controllers\Api\V1\FavoriteController;
 use QOR\App\Http\Controllers\Api\V1\FriendshipController;
 use QOR\App\Http\Controllers\Api\V1\NotificationPreferenceController;
+use QOR\App\Http\Controllers\Api\V1\PlanController;
 use QOR\App\Http\Controllers\Api\V1\ProfileController;
 use QOR\App\Http\Controllers\Api\V1\ShareController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{id}', [EventController::class, 'show'])->whereNumber('id');
+    Route::get('/plans', [PlanController::class, 'index']);
 });
 
 Route::middleware(['auth:fan', 'guard.fan'])->group(function () {
