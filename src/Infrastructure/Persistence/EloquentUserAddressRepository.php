@@ -36,6 +36,17 @@ class EloquentUserAddressRepository implements UserAddressRepository
         return $this->toDomain($model);
     }
 
+    public function listAllWithAddress(): array
+    {
+        /** @var list<UserAddress> $addresses */
+        $addresses = UserAddressModel::all()
+            ->map(fn (UserAddressModel $model) => $this->toDomain($model))
+            ->values()
+            ->all();
+
+        return $addresses;
+    }
+
     private function toDomain(UserAddressModel $model): UserAddress
     {
         // Postgres stores this as a naive `timestamp` column (matching the rest of the
