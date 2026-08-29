@@ -12,15 +12,25 @@ use QOR\App\Domain\Approval\ApprovalDecisionRepository;
 use QOR\App\Domain\Approval\Enum\ApprovalDecidableType;
 use QOR\App\Domain\Approval\Enum\ApprovalOutcome;
 use QOR\App\Domain\Approval\UseCase\DecideEventApproval;
+use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\Enum\City;
 
 class DecideEventApprovalTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
+
+    private function domainEvents(): DomainEventPublisher
+    {
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldReceive('publish')->zeroOrMoreTimes();
+
+        return $domainEvents;
+    }
 
     private function makeEvent(DateTimeImmutable $startsAt, EventStatus $status = EventStatus::PendingReview): Event
     {
@@ -54,7 +64,7 @@ class DecideEventApprovalTest extends TestCase
             ->once()
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $decision = $useCase->execute(1, ApprovalOutcome::Approved, null, 99);
 
@@ -78,7 +88,7 @@ class DecideEventApprovalTest extends TestCase
             ->once()
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $decision = $useCase->execute(1, ApprovalOutcome::Approved, null, 99);
 
@@ -105,7 +115,7 @@ class DecideEventApprovalTest extends TestCase
             ->with(Mockery::on(fn (ApprovalDecision $d) => $d->reason === 'Faltam informações sobre o local.'))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $decision = $useCase->execute(1, ApprovalOutcome::Rejected, 'Faltam informações sobre o local.', 99);
 
@@ -123,7 +133,7 @@ class DecideEventApprovalTest extends TestCase
         $approvalDecisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
         $approvalDecisionRepository->shouldNotReceive('save');
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -146,11 +156,51 @@ class DecideEventApprovalTest extends TestCase
             ->once()
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $decision = $useCase->execute(1, ApprovalOutcome::ForceCancelled, null, 99);
 
         $this->assertSame(ApprovalOutcome::ForceCancelled, $decision->outcome);
+    }
+
+    public function test_GIVEN_a_pending_event_WHEN_force_cancelled_THEN_event_cancelled_fires_with_the_event_id(): void
+    {
+        $event = $this->makeEvent((new DateTimeImmutable())->modify('+1 day'));
+
+        $eventRepository = Mockery::mock(EventRepository::class);
+        $eventRepository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $eventRepository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+
+        $approvalDecisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
+        $approvalDecisionRepository->shouldReceive('save')->once()->andReturnUsing(fn (ApprovalDecision $d) => $d);
+
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldReceive('publish')
+            ->once()
+            ->with(Mockery::on(fn (EventCancelled $e) => $e->eventId === 1));
+
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $domainEvents);
+
+        $useCase->execute(1, ApprovalOutcome::ForceCancelled, null, 99);
+    }
+
+    public function test_GIVEN_event_starts_in_the_future_WHEN_approved_THEN_event_cancelled_does_not_fire(): void
+    {
+        $event = $this->makeEvent((new DateTimeImmutable())->modify('+1 day'));
+
+        $eventRepository = Mockery::mock(EventRepository::class);
+        $eventRepository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $eventRepository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+
+        $approvalDecisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
+        $approvalDecisionRepository->shouldReceive('save')->once()->andReturnUsing(fn (ApprovalDecision $d) => $d);
+
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldNotReceive('publish');
+
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $domainEvents);
+
+        $useCase->execute(1, ApprovalOutcome::Approved, null, 99);
     }
 
     public function test_GIVEN_any_outcome_WHEN_executed_THEN_decision_is_recorded_via_repository(): void
@@ -171,7 +221,7 @@ class DecideEventApprovalTest extends TestCase
             ))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $useCase->execute(1, ApprovalOutcome::Approved, null, 99);
     }
@@ -185,7 +235,7 @@ class DecideEventApprovalTest extends TestCase
         $approvalDecisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
         $approvalDecisionRepository->shouldNotReceive('save');
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -201,7 +251,7 @@ class DecideEventApprovalTest extends TestCase
         $approvalDecisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
         $approvalDecisionRepository->shouldNotReceive('save');
 
-        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository);
+        $useCase = new DecideEventApproval($eventRepository, $approvalDecisionRepository, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 

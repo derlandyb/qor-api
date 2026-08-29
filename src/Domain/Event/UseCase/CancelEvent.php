@@ -3,16 +3,19 @@
 namespace QOR\App\Domain\Event\UseCase;
 
 use InvalidArgumentException;
+use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Promoter\Promoter;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Venue\Venue;
 
 final class CancelEvent
 {
     public function __construct(
         private readonly EventRepository $events,
+        private readonly DomainEventPublisher $domainEvents,
     ) {
     }
 
@@ -26,6 +29,12 @@ final class CancelEvent
 
         $event = $event->transitionTo(EventStatus::Cancelled);
 
-        return $this->events->save($event);
+        $savedEvent = $this->events->save($event);
+
+        if ($savedEvent->id !== null) {
+            $this->domainEvents->publish(new EventCancelled($savedEvent->id));
+        }
+
+        return $savedEvent;
     }
 }

@@ -8,20 +8,28 @@ use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use QOR\App\Domain\Admin\AdminAccountRepository;
 use QOR\App\Domain\Approval\ApprovalDecisionRepository;
+use QOR\App\Domain\Event\DomainEvent\EventCancelled;
+use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Notification\Enum\NotificationTriggerType;
 use QOR\App\Domain\Notification\NotificationDispatcher;
 use QOR\App\Domain\Notification\NotificationLogRepository;
 use QOR\App\Domain\Notification\NotificationPreferenceRepository;
 use QOR\App\Domain\Notification\UseCase\DetectNearbyReminders;
 use QOR\App\Domain\Notification\UseCase\DetectRegionalPublishes;
+use QOR\App\Domain\Notification\UseCase\HandleEventChangedOrCancelled;
+use QOR\App\Domain\Notification\UseCase\HandleFriendInterest;
 use QOR\App\Domain\Promoter\PromoterRepository;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\PasswordHasher;
+use QOR\App\Domain\Social\DomainEvent\FavoriteCreated;
 use QOR\App\Domain\Social\FavoriteRepository;
 use QOR\App\Domain\Social\FriendshipRepository;
 use QOR\App\Domain\User\ConsentRepository;
@@ -34,6 +42,7 @@ use QOR\App\Domain\User\UserRepository;
 use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Infrastructure\Auth\LaravelEmailVerificationAdapter;
 use QOR\App\Infrastructure\Auth\LaravelPasswordResetAdapter;
+use QOR\App\Infrastructure\Events\LaravelDomainEventPublisher;
 use QOR\App\Infrastructure\Notification\FcmPushSender;
 use QOR\App\Infrastructure\Notification\SesEmailSender;
 use QOR\App\Infrastructure\Persistence\EloquentAdminAccountRepository;
@@ -72,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(NotificationLogRepository::class, EloquentNotificationLogRepository::class);
         $this->app->bind(UserAddressRepository::class, EloquentUserAddressRepository::class);
         $this->app->bind(UserFavoriteGenreRepository::class, EloquentUserFavoriteGenreRepository::class);
+        $this->app->bind(DomainEventPublisher::class, LaravelDomainEventPublisher::class);
         $this->app->bind(FileUploadPort::class, S3UploadAdapter::class);
         $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
         $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
@@ -176,6 +186,27 @@ class AppServiceProvider extends ServiceProvider
             $appUrl = config('app.url');
 
             return $appUrl.'/redefinir-senha?token='.$token.'&email='.urlencode($notifiable->getEmailForPasswordReset());
+        });
+
+        // Domain-event wiring (T86/T87, notifications/design.md's
+        // Integration Points table): EditEvent/CancelEvent/
+        // DecideEventApproval and ToggleFavorite publish plain domain
+        // events through DomainEventPublisher (framework-agnostic from the
+        // domain layer's side); this composition-root registration is what
+        // actually connects them to the event-driven handlers built in
+        // Phase 5b.
+        Event::listen(EventChanged::class, function (EventChanged $event): void {
+            $this->app->make(HandleEventChangedOrCancelled::class)
+                ->handle($event->eventId, NotificationTriggerType::EventChanged);
+        });
+
+        Event::listen(EventCancelled::class, function (EventCancelled $event): void {
+            $this->app->make(HandleEventChangedOrCancelled::class)
+                ->handle($event->eventId, NotificationTriggerType::EventCancelled);
+        });
+
+        Event::listen(FavoriteCreated::class, function (FavoriteCreated $event): void {
+            $this->app->make(HandleFriendInterest::class)->handle($event->userId, $event->eventId);
         });
     }
 }

@@ -6,11 +6,13 @@ use DateTimeImmutable;
 use DomainException;
 use InvalidArgumentException;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
+use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\UploadableFile;
@@ -22,6 +24,7 @@ final class EditEvent
         private readonly EventRepository $events,
         private readonly FileUploadPort $fileUpload,
         private readonly PromoterRepository $promoters,
+        private readonly DomainEventPublisher $domainEvents,
     ) {
     }
 
@@ -125,6 +128,17 @@ final class EditEvent
 
             $savedEvent = $this->events->save($updated);
             $this->tagPromoters($organizer, $savedEvent, $promoterIds);
+
+            // NOTIF-05: only the two fields a Published event can actually
+            // change (description/cover) make this "material" — a no-op
+            // edit call (nothing differs from the persisted event) must not
+            // spam every favoriting fan.
+            $descriptionChanged = $description !== null && $description !== $event->description;
+            $coverChanged = $coverImage !== null && $coverImageUrl !== $event->coverImageUrl;
+
+            if (($descriptionChanged || $coverChanged) && $savedEvent->id !== null) {
+                $this->domainEvents->publish(new EventChanged($savedEvent->id));
+            }
 
             return $savedEvent;
         }
