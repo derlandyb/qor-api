@@ -92,4 +92,30 @@ class AdminAuthControllerTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    public function test_GIVEN_a_super_admin_account_WHEN_logging_in_THEN_the_response_exposes_capabilities_not_the_raw_flag(): void
+    {
+        AdminUserModel::factory()->create([
+            'email' => 'super@example.com',
+            'password' => Hash::make('Senha123'),
+            'is_super_admin' => true,
+        ]);
+
+        $response = $this->postJson('/api/admin/v1/auth/login', ['email' => 'super@example.com', 'password' => 'Senha123']);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.permissions', ['approvals.manage', 'plans.manage'])
+            ->assertJsonMissingPath('data.is_super_admin');
+    }
+
+    public function test_GIVEN_a_regular_venue_admin_account_WHEN_logging_in_THEN_the_response_grants_no_super_admin_capabilities(): void
+    {
+        $this->venueAdmin('venue-comum@example.com', ApprovalStatus::Approved);
+
+        $response = $this->postJson('/api/admin/v1/auth/login', ['email' => 'venue-comum@example.com', 'password' => 'Senha123']);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.permissions', [])
+            ->assertJsonMissingPath('data.is_super_admin');
+    }
 }

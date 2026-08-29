@@ -71,7 +71,20 @@ class AdminAuthController extends Controller
             'id' => $account->id,
             'name' => $account->name,
             'email' => $account->email,
-            'is_super_admin' => $account->isSuperAdmin,
+            'permissions' => $this->permissionsFor($account),
         ];
+    }
+
+    /**
+     * UI hint only — every capability implied here is independently
+     * re-enforced server-side by `guard.super-admin` (EnsureSuperAdmin),
+     * which re-reads the flag from the database on each request. Never
+     * make an authorization decision based on this list alone.
+     *
+     * @return list<string>
+     */
+    private function permissionsFor(AdminAccount $account): array
+    {
+        return $account->isSuperAdmin ? ['approvals.manage', 'plans.manage'] : [];
     }
 }
