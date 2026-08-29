@@ -38,6 +38,15 @@ class EloquentUserAddressRepository implements UserAddressRepository
 
     private function toDomain(UserAddressModel $model): UserAddress
     {
+        // Postgres stores this as a naive `timestamp` column (matching the rest of the
+        // schema); Eloquent's 'datetime' cast reinterprets the naive string using
+        // config('app.timezone') on read, which silently shifts the instant whenever
+        // APP_TIMEZONE isn't UTC. The raw string is always written in UTC wall-clock
+        // (asDateTime() preserves the source DateTimeInterface's own timezone on write),
+        // so read it back as UTC explicitly rather than trusting the cast.
+        /** @var string|null $rawConsentGivenAt */
+        $rawConsentGivenAt = $model->getRawOriginal('location_consent_given_at');
+
         return new UserAddress(
             id: $model->id,
             userId: $model->user_id,
@@ -50,7 +59,9 @@ class EloquentUserAddressRepository implements UserAddressRepository
             latitude: $model->latitude,
             longitude: $model->longitude,
             radiusKm: $model->radius_km,
-            locationConsentGivenAt: $model->location_consent_given_at?->toDateTimeImmutable(),
+            locationConsentGivenAt: $rawConsentGivenAt !== null
+                ? new \DateTimeImmutable($rawConsentGivenAt, new \DateTimeZone('UTC'))
+                : null,
         );
     }
 }
