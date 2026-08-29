@@ -8,10 +8,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use QOR\App\Domain\Billing\Enum\SubscribableType;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\SubscriptionModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
 
@@ -179,6 +181,10 @@ class EventControllerTest extends TestCase
         $venue = $this->actingAsVenueAdmin();
         $genreId = $this->genreId();
         $event = EventModel::factory()->create(['created_by_type' => 'venue_admin', 'created_by_id' => $venue->id, 'genre_id' => $genreId]);
+        SubscriptionModel::factory()->create([
+            'subscribable_type' => SubscribableType::Venue->value,
+            'subscribable_id' => $venue->id,
+        ]);
 
         $response = $this->postJson("/api/admin/v1/events/{$event->id}/submit");
 
