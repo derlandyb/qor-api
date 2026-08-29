@@ -37,6 +37,13 @@ class EloquentFavoriteRepository implements FavoriteRepository
         return FavoriteState::Favorited;
     }
 
+    public function hasUserFavorited(int $userId, int $eventId): bool
+    {
+        return FavoriteModel::where('user_id', $userId)
+            ->where('event_id', $eventId)
+            ->exists();
+    }
+
     public function listForUser(int $userId, ?string $cursor): FavoritePage
     {
         /** @var int $pageSize */
