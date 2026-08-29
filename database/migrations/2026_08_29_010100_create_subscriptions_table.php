@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedInteger('publishes_used_this_period')->default(0);
             $table->timestamps();
 
-            $table->index(['subscribable_type', 'subscribable_id']);
+            $table->unique(['subscribable_type', 'subscribable_id']);
         });
     }
 
