@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3a754b45-68d0-4cb2-ae71-fba8fcea8026",
     "name": "QOR API — MVP Core",
-    "description": "Postman collection covering every route registered in qor-api as of the admin-login slice (ADMIN-28-30) — 36 routes across routes/api_v1.php (fan-facing, /api/v1/*) and routes/api_admin_v1.php (admin surface, /api/admin/v1/*). See ARCHITECTURE.md §8.9.\n\nAuth: fan-guarded routes use `Authorization: Bearer {{fan_token}}`; admin-guarded routes (including Super-Admin-only approval routes) use `Authorization: Bearer {{admin_token}}`. Public routes need no Authorization header. Obtain a fan token via 'Login (Fan)' (or 'Register (Fan)' + login); obtain an admin token via 'Login (Admin)' after registering a Venue/Promoter (or seeding a Super Admin row directly) — login succeeds regardless of the account's approval status (ADMIN-28).",
+    "description": "Postman collection covering every route registered in qor-api as of Milestone 2 (Social & Notifications, Phase 5a/5b/5c) — 52 routes across routes/api_v1.php (fan-facing, /api/v1/*) and routes/api_admin_v1.php (admin surface, /api/admin/v1/*). Originally created at the admin-login slice (ADMIN-28-30, 36 routes) and extended with Milestone 2's Favorites, Friendships, Sharing, Notification Preferences, and Profile Extensions endpoints (T88). See ARCHITECTURE.md §8.9.\n\nAuth: fan-guarded routes use `Authorization: Bearer {{fan_token}}`; admin-guarded routes (including Super-Admin-only approval routes) use `Authorization: Bearer {{admin_token}}`. Public routes need no Authorization header. Obtain a fan token via 'Login (Fan)' (or 'Register (Fan)' + login); obtain an admin token via 'Login (Admin)' after registering a Venue/Promoter (or seeding a Super Admin row directly) — login succeeds regardless of the account's approval status (ADMIN-28).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1349,6 +1349,593 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Social & Notifications (Milestone 2)",
+      "item": [
+        {
+          "name": "Favorites",
+          "item": [
+            {
+              "name": "Toggle Favorite (Fan)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/events/:id/favorite",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "events",
+                    ":id",
+                    "favorite"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "FAV-01/FAV-02 — toggles the logged-in fan's favorite status for an event (favorites it if not already favorited, unfavorites it otherwise). No request body. `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "List Favorites (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/favorites?cursor=",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "favorites"
+                  ],
+                  "query": [
+                    {
+                      "key": "cursor",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "FAV-03 — cursor-paginated list of the logged-in fan's favorited events. `cursor` query param optional. Requires fan bearer token."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Friendships",
+          "item": [
+            {
+              "name": "Send Friend Request (Fan)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/friends/requests",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "friends",
+                    "requests"
+                  ]
+                },
+                "description": "FAV-05 — sends a friend request to another fan. `recipient_user_id` must be an existing user id (error: \"Usuário destinatário não encontrado.\" if not found). Requires fan bearer token.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recipient_user_id\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Incoming Friend Requests (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/friends/requests",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "friends",
+                    "requests"
+                  ]
+                },
+                "description": "FAV-11 — lists pending friend requests received by the logged-in fan. Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Accept Friend Request (Fan)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/friends/requests/:id/accept",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "friends",
+                    "requests",
+                    ":id",
+                    "accept"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "FAV-09 — accepts a pending friend request addressed to the logged-in fan. No request body. `id` is the friendship request id. Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Reject Friend Request (Fan)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/friends/requests/:id/reject",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "friends",
+                    "requests",
+                    ":id",
+                    "reject"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "FAV-10 — rejects a pending friend request addressed to the logged-in fan. No request body. `id` is the friendship request id. Requires fan bearer token. Response: `{\"message\": \"Solicitação de amizade recusada.\"}`."
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Friend (Fan)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/friends/:userId",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "friends",
+                    ":userId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "userId",
+                      "value": "2"
+                    }
+                  ]
+                },
+                "description": "FAV-12 — removes an existing friendship with `userId`. No request body. Requires fan bearer token. Response: `{\"message\": \"Amizade removida.\"}`."
+              },
+              "response": []
+            },
+            {
+              "name": "List Friends (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/friends?cursor=",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "friends"
+                  ],
+                  "query": [
+                    {
+                      "key": "cursor",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "FAV-15 — cursor-paginated list of the logged-in fan's accepted friendships. `cursor` query param optional. Requires fan bearer token."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Sharing",
+          "item": [
+            {
+              "name": "Friends Interested in Event (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/events/:id/friends-interested",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "events",
+                    ":id",
+                    "friends-interested"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "FAV-18 — lists the logged-in fan's friends who favorited/are interested in this event. `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Share Event with Friend (Fan)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/events/:id/share",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "events",
+                    ":id",
+                    "share"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "description": "FAV-21/FAV-22 — shares an event with a friend (triggers a notification to the friend). `friend_user_id` must be an existing user id (error: \"Amigo não encontrado.\" if not found). `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token. Response: `{\"message\": \"Evento compartilhado com sucesso.\"}`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"friend_user_id\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Notification Preferences",
+          "item": [
+            {
+              "name": "Get Notification Preferences (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/notification-preferences",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "notification-preferences"
+                  ]
+                },
+                "description": "AUTH-24 — the logged-in fan's notification preferences. Defaults are returned if none have been saved yet. Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Notification Preferences (Fan)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/notification-preferences",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "notification-preferences"
+                  ]
+                },
+                "description": "AUTH-24 — updates the logged-in fan's notification preferences. All fields optional/sometimes-present. `trigger_event_changed_cancelled` is always-on and not togglable (NOTIF-07's always-fires rule) — it is silently ignored even if sent. Requires fan bearer token.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"push_enabled\": true,\n  \"email_enabled\": true,\n  \"silence_all\": false,\n  \"trigger_nearby_reminder\": true,\n  \"trigger_friend_interest\": true,\n  \"trigger_new_regional\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Profile Extensions",
+          "item": [
+            {
+              "name": "Get Address (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/address",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "address"
+                  ]
+                },
+                "description": "AUTH-20 — the logged-in fan's saved address (used for nearby-event discovery radius). Returns `{\"data\": null}` if none saved yet. Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Address (Fan)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/address",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "address"
+                  ]
+                },
+                "description": "AUTH-20/AUTH-21 — sets/updates the logged-in fan's address. `city` is one of: vitoria, vila_velha, serra, cariacica (error: \"Cidade inválida.\" otherwise). `state` required (2-letter UF). `street`/`number`/`complement` optional/nullable. Requires fan bearer token.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"city\": \"vitoria\",\n  \"state\": \"ES\",\n  \"street\": \"Rua das Palmeiras\",\n  \"number\": \"123\",\n  \"complement\": \"Apto 302\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Preferences (Fan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/preferences",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "preferences"
+                  ]
+                },
+                "description": "AUTH-23 — the logged-in fan's favorite genres and search radius (km). Requires fan bearer token."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Preferences (Fan)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{fan_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/profile/preferences",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profile",
+                    "preferences"
+                  ]
+                },
+                "description": "AUTH-23 — updates the logged-in fan's favorite genres and/or search radius. Both fields optional/independent (`sometimes`) — send only the one(s) you want to change. `genre_ids` must reference existing genres (error: \"Gênero inválido.\" otherwise). `radius_km` must be 1-100 (errors: \"O raio de busca deve ser de pelo menos 1 km.\" / \"...no máximo 100 km.\"). Requires fan bearer token.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"genre_ids\": [\n    1,\n    4\n  ],\n  \"radius_km\": 15\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ]
 }
+
