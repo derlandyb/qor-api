@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\V1\AuthController;
 use QOR\App\Http\Controllers\Api\V1\EventController;
 use QOR\App\Http\Controllers\Api\V1\FavoriteController;
+use QOR\App\Http\Controllers\Api\V1\FriendshipController;
 use QOR\App\Http\Controllers\Api\V1\ProfileController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
@@ -56,4 +57,13 @@ Route::prefix('profile')->middleware(['auth:fan', 'guard.fan'])->group(function 
     Route::post('/data-rights/delete', [ProfileController::class, 'dataRightsDelete']);
     Route::post('/data-rights/revoke', [ProfileController::class, 'dataRightsRevoke']);
     Route::get('/favorites', [FavoriteController::class, 'index']);
+});
+
+Route::prefix('friends')->middleware(['auth:fan', 'guard.fan'])->group(function () {
+    Route::post('/requests', [FriendshipController::class, 'store']);
+    Route::get('/requests', [FriendshipController::class, 'incoming']);
+    Route::post('/requests/{id}/accept', [FriendshipController::class, 'accept'])->whereNumber('id');
+    Route::post('/requests/{id}/reject', [FriendshipController::class, 'reject'])->whereNumber('id');
+    Route::delete('/{userId}', [FriendshipController::class, 'destroy'])->whereNumber('userId');
+    Route::get('/', [FriendshipController::class, 'index']);
 });
