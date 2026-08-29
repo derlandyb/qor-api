@@ -21,6 +21,13 @@ class EloquentFriendshipRepository implements FriendshipRepository
         return $this->toDomain($model);
     }
 
+    public function findById(int $friendshipId): ?Friendship
+    {
+        $model = FriendshipModel::find($friendshipId);
+
+        return $model !== null ? $this->toDomain($model) : null;
+    }
+
     public function accept(int $friendshipId): Friendship
     {
         $model = FriendshipModel::findOrFail($friendshipId);

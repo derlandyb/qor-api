@@ -6,6 +6,12 @@ interface FriendshipRepository
 {
     public function create(int $requesterId, int $recipientId): Friendship;
 
+    /**
+     * Single row by id, or null if it doesn't exist — used to verify the
+     * responding user is the recipient before accept/reject (FAV-09/FAV-10).
+     */
+    public function findById(int $friendshipId): ?Friendship;
+
     public function accept(int $friendshipId): Friendship;
 
     public function reject(int $friendshipId): void;
