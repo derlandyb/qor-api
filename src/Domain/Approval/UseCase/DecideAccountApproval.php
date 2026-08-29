@@ -9,6 +9,8 @@ use QOR\App\Domain\Approval\ApprovalDecisionRepository;
 use QOR\App\Domain\Approval\Enum\ApprovalDecidableType;
 use QOR\App\Domain\Approval\Enum\ApprovalOutcome;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
+use QOR\App\Domain\Billing\Enum\SubscribableType;
+use QOR\App\Domain\Billing\UseCase\CreateSubscriptionOnApproval;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Venue\Venue;
@@ -20,6 +22,7 @@ final class DecideAccountApproval
         private readonly VenueRepository $venueRepository,
         private readonly PromoterRepository $promoterRepository,
         private readonly ApprovalDecisionRepository $approvalDecisionRepository,
+        private readonly CreateSubscriptionOnApproval $createSubscriptionOnApproval,
     ) {
     }
 
@@ -49,6 +52,10 @@ final class DecideAccountApproval
                 throw new InvalidArgumentException('Conta não encontrada.');
             }
 
+            if ($outcome === ApprovalOutcome::Approved) {
+                $this->createSubscriptionOnApproval->execute(SubscribableType::Venue, $accountId);
+            }
+
             $this->venueRepository->save(new Venue(
                 id: $venue->id,
                 venueAdminUserId: $venue->venueAdminUserId,
@@ -66,6 +73,10 @@ final class DecideAccountApproval
 
             if ($promoter === null) {
                 throw new InvalidArgumentException('Conta não encontrada.');
+            }
+
+            if ($outcome === ApprovalOutcome::Approved) {
+                $this->createSubscriptionOnApproval->execute(SubscribableType::Promoter, $accountId);
             }
 
             $this->promoterRepository->save(new Promoter(

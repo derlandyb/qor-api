@@ -12,6 +12,12 @@ use QOR\App\Domain\Approval\Enum\ApprovalDecidableType;
 use QOR\App\Domain\Approval\Enum\ApprovalOutcome;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Approval\UseCase\DecideAccountApproval;
+use QOR\App\Domain\Billing\Enum\SubscribableType;
+use QOR\App\Domain\Billing\Plan;
+use QOR\App\Domain\Billing\PlanRepository;
+use QOR\App\Domain\Billing\Subscription;
+use QOR\App\Domain\Billing\SubscriptionRepository;
+use QOR\App\Domain\Billing\UseCase\CreateSubscriptionOnApproval;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Venue\Venue;
@@ -49,6 +55,30 @@ class DecideAccountApprovalTest extends TestCase
         );
     }
 
+    private function subscriptionNotCreated(): CreateSubscriptionOnApproval
+    {
+        $planRepository = Mockery::mock(PlanRepository::class);
+        $planRepository->shouldNotReceive('findDefaultFree');
+
+        $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
+        $subscriptionRepository->shouldNotReceive('save');
+
+        return new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
+    }
+
+    private function defaultFreePlan(): Plan
+    {
+        return new Plan(
+            id: 1,
+            name: 'Gratuito',
+            monthlyPrice: 0.0,
+            annualPrice: null,
+            publishQuota: 5,
+            isActive: true,
+            isDefaultFree: true,
+        );
+    }
+
     public function test_GIVEN_a_pending_venue_WHEN_approving_THEN_status_becomes_approved_and_decision_is_saved(): void
     {
         $venue = $this->makeVenue();
@@ -78,7 +108,18 @@ class DecideAccountApprovalTest extends TestCase
                 reason: $d->reason,
             ));
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $planRepository = Mockery::mock(PlanRepository::class);
+        $planRepository->shouldReceive('findDefaultFree')->once()->andReturn($this->defaultFreePlan());
+
+        $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
+        $subscriptionRepository->shouldReceive('save')
+            ->once()
+            ->with(Mockery::on(fn (Subscription $s) => $s->subscribableType === SubscribableType::Venue && $s->subscribableId === 1))
+            ->andReturnUsing(fn (Subscription $s) => $s);
+
+        $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
+
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -112,7 +153,7 @@ class DecideAccountApprovalTest extends TestCase
                 && $d->reason === 'Documentação inválida'))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -136,7 +177,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Uma justificativa é obrigatória para rejeição ou suspensão.');
@@ -169,7 +210,7 @@ class DecideAccountApprovalTest extends TestCase
             ->with(Mockery::on(fn (ApprovalDecision $d) => $d->outcome === ApprovalOutcome::Suspended))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -203,7 +244,7 @@ class DecideAccountApprovalTest extends TestCase
                 && $d->decidableId === 2))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Promoter,
@@ -224,7 +265,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Conta não encontrada.');
@@ -244,7 +285,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -263,7 +304,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -271,6 +312,114 @@ class DecideAccountApprovalTest extends TestCase
             accountType: ApprovalDecidableType::Venue,
             accountId: 1,
             outcome: ApprovalOutcome::ForceCancelled,
+            reason: null,
+            decidedBy: 99,
+        );
+    }
+
+    public function test_GIVEN_a_venue_is_approved_WHEN_deciding_THEN_a_subscription_is_created_on_the_default_free_plan(): void
+    {
+        $venue = $this->makeVenue();
+
+        $venueRepository = Mockery::mock(VenueRepository::class);
+        $venueRepository->shouldReceive('findById')->once()->with(1)->andReturn($venue);
+        $venueRepository->shouldReceive('save')->once()->andReturnUsing(fn (Venue $v) => $v);
+
+        $promoterRepository = Mockery::mock(PromoterRepository::class);
+
+        $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
+        $decisionRepository->shouldReceive('save')->once()->andReturnUsing(fn (ApprovalDecision $d) => $d);
+
+        $planRepository = Mockery::mock(PlanRepository::class);
+        $planRepository->shouldReceive('findDefaultFree')->once()->andReturn($this->defaultFreePlan());
+
+        $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
+        $subscriptionRepository->shouldReceive('save')
+            ->once()
+            ->with(Mockery::on(fn (Subscription $s) => $s->subscribableType === SubscribableType::Venue
+                && $s->subscribableId === 1
+                && $s->publishesUsedThisPeriod === 0))
+            ->andReturnUsing(fn (Subscription $s) => $s);
+
+        $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
+
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+
+        $useCase->execute(
+            accountType: ApprovalDecidableType::Venue,
+            accountId: 1,
+            outcome: ApprovalOutcome::Approved,
+            reason: null,
+            decidedBy: 99,
+        );
+    }
+
+    public function test_GIVEN_a_promoter_is_approved_WHEN_deciding_THEN_a_subscription_is_created_on_the_default_free_plan(): void
+    {
+        $promoter = $this->makePromoter();
+
+        $venueRepository = Mockery::mock(VenueRepository::class);
+
+        $promoterRepository = Mockery::mock(PromoterRepository::class);
+        $promoterRepository->shouldReceive('findById')->once()->with(2)->andReturn($promoter);
+        $promoterRepository->shouldReceive('save')->once()->andReturnUsing(fn (Promoter $p) => $p);
+
+        $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
+        $decisionRepository->shouldReceive('save')->once()->andReturnUsing(fn (ApprovalDecision $d) => $d);
+
+        $planRepository = Mockery::mock(PlanRepository::class);
+        $planRepository->shouldReceive('findDefaultFree')->once()->andReturn($this->defaultFreePlan());
+
+        $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
+        $subscriptionRepository->shouldReceive('save')
+            ->once()
+            ->with(Mockery::on(fn (Subscription $s) => $s->subscribableType === SubscribableType::Promoter
+                && $s->subscribableId === 2
+                && $s->publishesUsedThisPeriod === 0))
+            ->andReturnUsing(fn (Subscription $s) => $s);
+
+        $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
+
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+
+        $useCase->execute(
+            accountType: ApprovalDecidableType::Promoter,
+            accountId: 2,
+            outcome: ApprovalOutcome::Approved,
+            reason: null,
+            decidedBy: 99,
+        );
+    }
+
+    public function test_GIVEN_no_default_free_plan_configured_WHEN_approving_an_account_THEN_the_approval_is_blocked_and_no_status_change_persists(): void
+    {
+        $venue = $this->makeVenue();
+
+        $venueRepository = Mockery::mock(VenueRepository::class);
+        $venueRepository->shouldReceive('findById')->once()->with(1)->andReturn($venue);
+        $venueRepository->shouldNotReceive('save');
+
+        $promoterRepository = Mockery::mock(PromoterRepository::class);
+        $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
+        $decisionRepository->shouldNotReceive('save');
+
+        $planRepository = Mockery::mock(PlanRepository::class);
+        $planRepository->shouldReceive('findDefaultFree')->once()->andReturn(null);
+
+        $subscriptionRepository = Mockery::mock(SubscriptionRepository::class);
+        $subscriptionRepository->shouldNotReceive('save');
+
+        $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
+
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Configure um plano gratuito padrão antes de aprovar contas.');
+
+        $useCase->execute(
+            accountType: ApprovalDecidableType::Venue,
+            accountId: 1,
+            outcome: ApprovalOutcome::Approved,
             reason: null,
             decidedBy: 99,
         );
