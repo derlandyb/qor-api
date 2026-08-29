@@ -4,7 +4,6 @@ namespace QOR\App\Infrastructure\Notification;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use InvalidArgumentException;
 use QOR\App\Domain\Notification\NotificationSender;
 use Throwable;
 
@@ -22,16 +21,12 @@ class SesEmailSender implements NotificationSender
         $subject = $payload['subject'] ?? null;
         $body = $payload['body'] ?? null;
 
-        if (! is_string($email) || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new InvalidArgumentException(
-                'Payload de e-mail inválido: endereço de e-mail ausente ou inválido.'
-            );
-        }
+        // A malformed/incomplete payload must never fail the fan-facing request that
+        // triggered the dispatch, same as a provider outage.
+        if (! is_string($email) || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || ! is_string($subject) || $subject === '' || ! is_string($body) || $body === '') {
+            Log::error("Payload de e-mail inválido para o usuário {$userId}: endereço, assunto ou corpo da mensagem ausente ou inválido.");
 
-        if (! is_string($subject) || $subject === '' || ! is_string($body) || $body === '') {
-            throw new InvalidArgumentException(
-                'Payload de e-mail inválido: assunto ou corpo da mensagem ausente.'
-            );
+            return;
         }
 
         // Provider-level failures are caught and logged here, never surfaced to the

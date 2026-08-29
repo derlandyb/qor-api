@@ -4,7 +4,6 @@ namespace Tests\Feature\Infrastructure\Notification;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use QOR\App\Infrastructure\Notification\FcmPushSender;
 use Tests\TestCase;
 
@@ -30,30 +29,30 @@ class FcmPushSenderTest extends TestCase
         });
     }
 
-    public function test_GIVEN_a_payload_missing_the_device_token_WHEN_sending_THEN_it_throws_and_never_calls_fcm(): void
+    public function test_GIVEN_a_payload_missing_the_device_token_WHEN_sending_THEN_it_logs_and_never_calls_fcm(): void
     {
         Http::fake();
+        Log::spy();
 
         $sender = new FcmPushSender();
 
-        $this->expectException(InvalidArgumentException::class);
+        $sender->send(1, ['title' => 'Título', 'body' => 'Corpo']);
 
-        try {
-            $sender->send(1, ['title' => 'Título', 'body' => 'Corpo']);
-        } finally {
-            Http::assertNothingSent();
-        }
+        Http::assertNothingSent();
+        Log::shouldHaveReceived('error')->once();
     }
 
-    public function test_GIVEN_a_payload_missing_the_title_and_body_WHEN_sending_THEN_it_throws(): void
+    public function test_GIVEN_a_payload_missing_the_title_and_body_WHEN_sending_THEN_it_logs_and_never_calls_fcm(): void
     {
         Http::fake();
+        Log::spy();
 
         $sender = new FcmPushSender();
 
-        $this->expectException(InvalidArgumentException::class);
-
         $sender->send(1, ['device_token' => 'device-token-abc']);
+
+        Http::assertNothingSent();
+        Log::shouldHaveReceived('error')->once();
     }
 
     public function test_GIVEN_fcm_responds_with_a_failure_WHEN_sending_THEN_it_does_not_throw_and_logs_the_failure(): void

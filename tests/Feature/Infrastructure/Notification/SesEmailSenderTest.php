@@ -3,8 +3,8 @@
 namespace Tests\Feature\Infrastructure\Notification;
 
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use InvalidArgumentException;
 use QOR\App\Infrastructure\Notification\SesEmailSender;
 use Tests\TestCase;
 
@@ -27,29 +27,29 @@ class SesEmailSenderTest extends TestCase
         });
     }
 
-    public function test_GIVEN_a_payload_with_an_invalid_email_WHEN_sending_THEN_it_throws_and_never_sends(): void
+    public function test_GIVEN_a_payload_with_an_invalid_email_WHEN_sending_THEN_it_logs_and_never_sends(): void
     {
         Mail::fake();
+        Log::spy();
 
         $sender = new SesEmailSender();
 
-        $this->expectException(InvalidArgumentException::class);
+        $sender->send(1, ['email' => 'not-an-email', 'subject' => 'Título', 'body' => 'Corpo']);
 
-        try {
-            $sender->send(1, ['email' => 'not-an-email', 'subject' => 'Título', 'body' => 'Corpo']);
-        } finally {
-            Mail::assertNothingSent();
-        }
+        Mail::assertNothingSent();
+        Log::shouldHaveReceived('error')->once();
     }
 
-    public function test_GIVEN_a_payload_missing_the_subject_and_body_WHEN_sending_THEN_it_throws(): void
+    public function test_GIVEN_a_payload_missing_the_subject_and_body_WHEN_sending_THEN_it_logs_and_never_sends(): void
     {
         Mail::fake();
+        Log::spy();
 
         $sender = new SesEmailSender();
 
-        $this->expectException(InvalidArgumentException::class);
-
         $sender->send(1, ['email' => 'fan@example.com']);
+
+        Mail::assertNothingSent();
+        Log::shouldHaveReceived('error')->once();
     }
 }

@@ -4,7 +4,6 @@ namespace QOR\App\Infrastructure\Notification;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use QOR\App\Domain\Notification\NotificationSender;
 use Throwable;
 
@@ -16,16 +15,13 @@ class FcmPushSender implements NotificationSender
         $title = $payload['title'] ?? null;
         $body = $payload['body'] ?? null;
 
-        if (! is_string($deviceToken) || $deviceToken === '') {
-            throw new InvalidArgumentException(
-                'Payload de notificação push inválido: token do dispositivo ausente.'
-            );
-        }
+        // A malformed/incomplete payload (e.g. no device-token store exists yet for
+        // this milestone — Phase 5a's ambiguity resolution #3) must never fail the
+        // fan-facing request that triggered the dispatch, same as a provider outage.
+        if (! is_string($deviceToken) || $deviceToken === '' || ! is_string($title) || $title === '' || ! is_string($body) || $body === '') {
+            Log::error("Payload de notificação push inválido para o usuário {$userId}: token do dispositivo, título ou corpo da mensagem ausente.");
 
-        if (! is_string($title) || $title === '' || ! is_string($body) || $body === '') {
-            throw new InvalidArgumentException(
-                'Payload de notificação push inválido: título ou corpo da mensagem ausente.'
-            );
+            return;
         }
 
         /** @var string $serverKey */
