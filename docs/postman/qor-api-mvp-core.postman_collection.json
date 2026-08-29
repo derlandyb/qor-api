@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3a754b45-68d0-4cb2-ae71-fba8fcea8026",
     "name": "QOR API — MVP Core",
-    "description": "Postman collection covering every route registered in qor-api as of Phase 4 (Event Lifecycle & Admin Tools) — 34 routes across routes/api_v1.php (fan-facing, /api/v1/*) and routes/api_admin_v1.php (admin surface, /api/admin/v1/*). See ARCHITECTURE.md §8.9.\n\nAuth: fan-guarded routes use `Authorization: Bearer {{fan_token}}`; admin-guarded routes (including Super-Admin-only approval routes) use `Authorization: Bearer {{admin_token}}`. Public routes need no Authorization header. Obtain a fan token via 'Login (Fan)' (or 'Register (Fan)' + login); an admin token currently has no dedicated admin-login endpoint in this phase — paste one obtained through your own admin auth flow into the `admin_token` variable.",
+    "description": "Postman collection covering every route registered in qor-api as of the admin-login slice (ADMIN-28-30) — 36 routes across routes/api_v1.php (fan-facing, /api/v1/*) and routes/api_admin_v1.php (admin surface, /api/admin/v1/*). See ARCHITECTURE.md §8.9.\n\nAuth: fan-guarded routes use `Authorization: Bearer {{fan_token}}`; admin-guarded routes (including Super-Admin-only approval routes) use `Authorization: Bearer {{admin_token}}`. Public routes need no Authorization header. Obtain a fan token via 'Login (Fan)' (or 'Register (Fan)' + login); obtain an admin token via 'Login (Admin)' after registering a Venue/Promoter (or seeding a Super Admin row directly) — login succeeds regardless of the account's approval status (ADMIN-28).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -628,6 +628,76 @@
               ]
             },
             "description": "DISC-07/DISC-08/DISC-09/DISC-10/DISC-11/DISC-13 — full event detail including tagged promoters. Public, no token needed. `id` must be a valid seeded event id (e.g. from `php artisan db:seed`, or from a prior List Upcoming Events response)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth (Admin)",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "ADMIN-28/ADMIN-29 — Venue Admin/Promoter/Super Admin login. Public, no token needed. Succeeds regardless of the account's approval status (Pending Approval/Approved/Rejected/Suspended alike) — approval gating happens at write-action endpoints, not at login. Wrong password or unknown email both return 401 with the same generic message. Response contains `token` — copy into the `admin_token` collection/environment variable for subsequent authenticated requests.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@clubenauticovix.com.br\",\n  \"password\": \"SenhaForte123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/v1/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "ADMIN-30 — ends the admin's current session by revoking the current Sanctum access token. Requires admin bearer token."
           },
           "response": []
         }
