@@ -16,6 +16,15 @@ interface EventRepository
     public function findById(int $id): ?Event;
 
     /**
+     * Batch lookup, preserving no particular order — callers that need a specific
+     * order (e.g. a favorites list) re-order client-side by the source list.
+     *
+     * @param  list<int>  $ids
+     * @return list<Event>
+     */
+    public function findByIds(array $ids): array;
+
+    /**
      * All events (any status) created by a given organizer, most-recent-start-first.
      * Used by the admin "my events" listing (T41).
      *
