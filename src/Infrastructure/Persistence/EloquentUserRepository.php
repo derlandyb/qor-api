@@ -22,6 +22,25 @@ class EloquentUserRepository implements UserRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /**
+     * @param list<int> $ids
+     * @return array<int, User>
+     */
+    public function findByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $users = [];
+
+        foreach (UserModel::whereIn('id', $ids)->get() as $model) {
+            $users[$model->id] = $this->toDomain($model);
+        }
+
+        return $users;
+    }
+
     public function save(User $user): User
     {
         $model = $user->id !== null ? UserModel::findOrFail($user->id) : new UserModel();

@@ -8,14 +8,17 @@ use QOR\App\Domain\Approval\ApprovalDecision;
 use QOR\App\Domain\Approval\ApprovalDecisionRepository;
 use QOR\App\Domain\Approval\Enum\ApprovalDecidableType;
 use QOR\App\Domain\Approval\Enum\ApprovalOutcome;
+use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 
 final class DecideEventApproval
 {
     public function __construct(
         private readonly EventRepository $eventRepository,
         private readonly ApprovalDecisionRepository $approvalDecisionRepository,
+        private readonly DomainEventPublisher $domainEvents,
     ) {
     }
 
@@ -46,6 +49,13 @@ final class DecideEventApproval
         $transitionedEvent = $event->transitionTo($newStatus, $feedback);
 
         $this->eventRepository->save($transitionedEvent);
+
+        // NOTIF-06: a Super-Admin force-cancel notifies favoriting fans just
+        // like an organizer-initiated cancellation (CancelEvent, T44) —
+        // regardless of who initiated it.
+        if ($outcome === ApprovalOutcome::ForceCancelled) {
+            $this->domainEvents->publish(new EventCancelled($eventId));
+        }
 
         return $this->approvalDecisionRepository->save(new ApprovalDecision(
             id: null,

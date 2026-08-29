@@ -9,17 +9,27 @@ use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
+use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\UseCase\CancelEvent;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Domain\Venue\Venue;
 
 class CancelEventTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
+
+    private function domainEvents(): DomainEventPublisher
+    {
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldReceive('publish')->zeroOrMoreTimes();
+
+        return $domainEvents;
+    }
 
     private function approvedVenue(int $id = 1): Venue
     {
@@ -64,11 +74,30 @@ class CancelEventTest extends TestCase
             ->with(Mockery::on(fn (Event $e) => $e->status === EventStatus::Cancelled))
             ->andReturnUsing(fn (Event $e) => $e);
 
-        $useCase = new CancelEvent($repository);
+        $useCase = new CancelEvent($repository, $this->domainEvents());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue);
 
         $this->assertSame(EventStatus::Cancelled, $result->status);
+    }
+
+    public function test_GIVEN_a_published_event_owned_by_the_organizer_WHEN_cancelling_THEN_event_cancelled_fires_with_the_event_id(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = $this->makeEvent(EventStatus::Published, createdById: 1);
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldReceive('publish')
+            ->once()
+            ->with(Mockery::on(fn (EventCancelled $e) => $e->eventId === 1));
+
+        $useCase = new CancelEvent($repository, $domainEvents);
+
+        $useCase->execute(eventId: 1, organizer: $venue);
     }
 
     public function test_GIVEN_a_draft_event_owned_by_the_organizer_WHEN_cancelling_THEN_it_throws(): void
@@ -80,7 +109,7 @@ class CancelEventTest extends TestCase
         $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
         $repository->shouldNotReceive('save');
 
-        $useCase = new CancelEvent($repository);
+        $useCase = new CancelEvent($repository, $this->domainEvents());
 
         $this->expectException(DomainException::class);
 
@@ -96,7 +125,7 @@ class CancelEventTest extends TestCase
         $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
         $repository->shouldNotReceive('save');
 
-        $useCase = new CancelEvent($repository);
+        $useCase = new CancelEvent($repository, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -111,7 +140,7 @@ class CancelEventTest extends TestCase
         $repository->shouldReceive('findById')->once()->with(404)->andReturn(null);
         $repository->shouldNotReceive('save');
 
-        $useCase = new CancelEvent($repository);
+        $useCase = new CancelEvent($repository, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 

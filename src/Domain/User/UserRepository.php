@@ -8,6 +8,12 @@ interface UserRepository
 
     public function findById(int $id): ?User;
 
+    /**
+     * @param list<int> $ids
+     * @return array<int, User> keyed by id
+     */
+    public function findByIds(array $ids): array;
+
     public function save(User $user): User;
 
     /**

@@ -13,11 +13,21 @@
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\V1\AuthController;
 use QOR\App\Http\Controllers\Api\V1\EventController;
+use QOR\App\Http\Controllers\Api\V1\FavoriteController;
+use QOR\App\Http\Controllers\Api\V1\FriendshipController;
+use QOR\App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use QOR\App\Http\Controllers\Api\V1\ProfileController;
+use QOR\App\Http\Controllers\Api\V1\ShareController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{id}', [EventController::class, 'show'])->whereNumber('id');
+});
+
+Route::middleware(['auth:fan', 'guard.fan'])->group(function () {
+    Route::post('/events/{id}/favorite', [FavoriteController::class, 'toggle'])->whereNumber('id');
+    Route::get('/events/{id}/friends-interested', [ShareController::class, 'friendsInterested'])->whereNumber('id');
+    Route::post('/events/{id}/share', [ShareController::class, 'share'])->whereNumber('id');
 });
 
 Route::prefix('auth')->middleware('throttle:qor-auth')->group(function () {
@@ -50,4 +60,20 @@ Route::prefix('profile')->middleware(['auth:fan', 'guard.fan'])->group(function 
     Route::get('/data-rights/export', [ProfileController::class, 'dataRightsExport']);
     Route::post('/data-rights/delete', [ProfileController::class, 'dataRightsDelete']);
     Route::post('/data-rights/revoke', [ProfileController::class, 'dataRightsRevoke']);
+    Route::get('/favorites', [FavoriteController::class, 'index']);
+    Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);
+    Route::patch('/notification-preferences', [NotificationPreferenceController::class, 'update']);
+    Route::get('/address', [ProfileController::class, 'showAddress']);
+    Route::patch('/address', [ProfileController::class, 'updateAddress']);
+    Route::get('/preferences', [ProfileController::class, 'showPreferences']);
+    Route::patch('/preferences', [ProfileController::class, 'updatePreferences']);
+});
+
+Route::prefix('friends')->middleware(['auth:fan', 'guard.fan'])->group(function () {
+    Route::post('/requests', [FriendshipController::class, 'store']);
+    Route::get('/requests', [FriendshipController::class, 'incoming']);
+    Route::post('/requests/{id}/accept', [FriendshipController::class, 'accept'])->whereNumber('id');
+    Route::post('/requests/{id}/reject', [FriendshipController::class, 'reject'])->whereNumber('id');
+    Route::delete('/{userId}', [FriendshipController::class, 'destroy'])->whereNumber('userId');
+    Route::get('/', [FriendshipController::class, 'index']);
 });

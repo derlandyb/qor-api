@@ -7,10 +7,16 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use QOR\App\Domain\Shared\UploadableFile;
 use QOR\App\Domain\User\User;
+use QOR\App\Domain\User\UserAddress;
+use QOR\App\Domain\User\UserAddressRepository;
+use QOR\App\Domain\User\UserFavoriteGenreRepository;
 use QOR\App\Domain\User\UseCase\ExerciseDataRight;
+use QOR\App\Domain\User\UseCase\UpdatePreferences;
 use QOR\App\Domain\User\UseCase\UpdateProfile;
 use QOR\App\Http\Controllers\Controller;
 use QOR\App\Http\Requests\Api\V1\RevokeConsentRequest;
+use QOR\App\Http\Requests\Api\V1\UpdateAddressRequest;
+use QOR\App\Http\Requests\Api\V1\UpdateFanPreferencesRequest;
 use QOR\App\Http\Requests\Api\V1\UpdateProfileRequest;
 use QOR\App\Http\Requests\Api\V1\UploadProfilePictureRequest;
 use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
@@ -20,6 +26,9 @@ class ProfileController extends Controller
     public function __construct(
         private readonly UpdateProfile $updateProfile,
         private readonly ExerciseDataRight $exerciseDataRight,
+        private readonly UpdatePreferences $updatePreferences,
+        private readonly UserAddressRepository $addresses,
+        private readonly UserFavoriteGenreRepository $favoriteGenres,
     ) {
     }
 
@@ -112,6 +121,87 @@ class ProfileController extends Controller
         $this->exerciseDataRight->revokeConsent((int) $model->id, $request->consentType());
 
         return response()->json(['message' => 'Consentimento revogado com sucesso.']);
+    }
+
+    public function showAddress(Request $request): JsonResponse
+    {
+        /** @var UserModel $model */
+        $model = $request->user();
+
+        $address = $this->addresses->findByUserId((int) $model->id);
+
+        return response()->json(['data' => $address !== null ? $this->addressToArray($address) : null]);
+    }
+
+    public function updateAddress(UpdateAddressRequest $request): JsonResponse
+    {
+        /** @var UserModel $model */
+        $model = $request->user();
+
+        $this->updatePreferences->setAddress(
+            userId: (int) $model->id,
+            city: $request->city(),
+            state: $request->state(),
+            street: $request->street(),
+            number: $request->number(),
+            complement: $request->complement(),
+        );
+
+        $address = $this->addresses->findByUserId((int) $model->id);
+
+        return response()->json(['data' => $address !== null ? $this->addressToArray($address) : null]);
+    }
+
+    public function showPreferences(Request $request): JsonResponse
+    {
+        /** @var UserModel $model */
+        $model = $request->user();
+
+        $address = $this->addresses->findByUserId((int) $model->id);
+
+        return response()->json(['data' => [
+            'genre_ids' => $this->favoriteGenres->listForUser((int) $model->id),
+            'radius_km' => $address?->radiusKm,
+        ]]);
+    }
+
+    public function updatePreferences(UpdateFanPreferencesRequest $request): JsonResponse
+    {
+        /** @var UserModel $model */
+        $model = $request->user();
+
+        if ($request->hasGenreIds()) {
+            $this->updatePreferences->setFavoriteGenres((int) $model->id, $request->genreIds());
+        }
+
+        if ($request->hasRadiusKm()) {
+            /** @var int $radiusKm */
+            $radiusKm = $request->radiusKm();
+            $this->updatePreferences->setSearchRadius((int) $model->id, $radiusKm);
+        }
+
+        $address = $this->addresses->findByUserId((int) $model->id);
+
+        return response()->json(['data' => [
+            'genre_ids' => $this->favoriteGenres->listForUser((int) $model->id),
+            'radius_km' => $address?->radiusKm,
+        ]]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function addressToArray(UserAddress $address): array
+    {
+        return [
+            'city' => $address->city->value,
+            'state' => $address->state,
+            'street' => $address->street,
+            'number' => $address->number,
+            'complement' => $address->complement,
+            'source' => $address->source->value,
+            'radius_km' => $address->radiusKm,
+        ];
     }
 
     private function toUploadableFile(UploadedFile $file): UploadableFile

@@ -14,8 +14,10 @@ use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\UseCase\EditEvent;
+use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
+use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Venue\Venue;
@@ -23,6 +25,19 @@ use QOR\App\Domain\Venue\Venue;
 class EditEventTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
+
+    /**
+     * A permissive domain-event publisher double for tests that don't
+     * assert on event emission (each assertion-relevant test builds its
+     * own stricter expectation instead).
+     */
+    private function domainEvents(): DomainEventPublisher
+    {
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldReceive('publish')->zeroOrMoreTimes();
+
+        return $domainEvents;
+    }
 
     private function approvedVenue(int $id = 1): Venue
     {
@@ -70,7 +85,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
 
@@ -92,7 +107,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue, description: 'Nova descrição.');
 
@@ -111,7 +126,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Apenas descrição e imagem podem ser editados após a publicação.');
@@ -131,7 +146,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -150,7 +165,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Este evento não pode ser editado no status atual.');
@@ -169,7 +184,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -204,7 +219,7 @@ class EditEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(2)->andReturn($approvedPromoter);
         $promoters->shouldReceive('tagEvent')->once()->with(1, [2]);
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $useCase->execute(eventId: 1, organizer: $venue, promoterIds: [2]);
     }
@@ -225,7 +240,7 @@ class EditEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(2)->andReturn($approvedPromoter);
         $promoters->shouldReceive('tagEvent')->once()->with(1, [2]);
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $useCase->execute(eventId: 1, organizer: $venue, promoterIds: [2]);
     }
@@ -253,12 +268,75 @@ class EditEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(3)->andReturn($unapprovedPromoter);
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Promotor inválido ou não aprovado.');
 
         $useCase->execute(eventId: 1, organizer: $venue, promoterIds: [3]);
+    }
+
+    public function test_GIVEN_a_published_event_WHEN_editing_the_description_THEN_event_changed_fires_with_the_event_id(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = $this->makeEvent(EventStatus::Published, createdById: 1);
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldReceive('publish')
+            ->once()
+            ->with(Mockery::on(fn (EventChanged $e) => $e->eventId === 1));
+
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents);
+
+        $useCase->execute(eventId: 1, organizer: $venue, description: 'Nova descrição.');
+    }
+
+    public function test_GIVEN_a_draft_event_WHEN_editing_it_THEN_event_changed_does_not_fire(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = $this->makeEvent(EventStatus::Draft, createdById: 1);
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldNotReceive('publish');
+
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents);
+
+        $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
+    }
+
+    public function test_GIVEN_a_published_event_WHEN_editing_with_no_actual_field_changes_THEN_event_changed_does_not_fire(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = $this->makeEvent(EventStatus::Published, createdById: 1);
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')->once()->andReturnUsing(fn (Event $e) => $e);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $domainEvents = Mockery::mock(DomainEventPublisher::class);
+        $domainEvents->shouldNotReceive('publish');
+
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents);
+
+        // Same description as the persisted event — no material change.
+        $useCase->execute(eventId: 1, organizer: $venue, description: 'Descrição original.');
     }
 
     public function test_GIVEN_promoter_ids_not_provided_WHEN_editing_THEN_existing_tags_are_left_untouched(): void
@@ -276,7 +354,7 @@ class EditEventTest extends TestCase
         $promoters->shouldNotReceive('findById');
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents());
 
         $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
     }

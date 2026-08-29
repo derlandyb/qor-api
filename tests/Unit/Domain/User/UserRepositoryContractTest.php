@@ -30,6 +30,11 @@ final class InMemoryUserRepository implements UserRepository
         return $this->users[$id] ?? null;
     }
 
+    public function findByIds(array $ids): array
+    {
+        return array_intersect_key($this->users, array_flip($ids));
+    }
+
     public function save(User $user): User
     {
         $id = $user->id ?? $this->nextId++;
