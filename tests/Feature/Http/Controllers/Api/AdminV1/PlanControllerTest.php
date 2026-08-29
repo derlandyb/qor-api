@@ -38,6 +38,34 @@ class PlanControllerTest extends TestCase
         $publicResponse->assertStatus(200)->assertJsonPath('data.0.name', 'Profissional');
     }
 
+    public function test_GIVEN_active_and_inactive_plans_WHEN_a_super_admin_lists_all_plans_THEN_the_response_includes_each_plans_fields(): void
+    {
+        $this->actingAsSuperAdmin();
+        PlanModel::factory()->create([
+            'name' => 'Gratuito',
+            'monthly_price' => 0,
+            'publish_quota' => 5,
+            'is_active' => true,
+        ]);
+        PlanModel::factory()->create([
+            'name' => 'Descontinuado',
+            'monthly_price' => 29.9,
+            'publish_quota' => 10,
+            'is_active' => false,
+        ]);
+
+        $response = $this->getJson('/api/admin/v1/plans');
+
+        $response->assertStatus(200)->assertJsonCount(2, 'data');
+        $byName = collect($response->json('data'))->keyBy('name');
+        $this->assertEquals(0, $byName['Gratuito']['monthly_price']);
+        $this->assertSame(5, $byName['Gratuito']['publish_quota']);
+        $this->assertTrue($byName['Gratuito']['is_active']);
+        $this->assertEquals(29.9, $byName['Descontinuado']['monthly_price']);
+        $this->assertSame(10, $byName['Descontinuado']['publish_quota']);
+        $this->assertFalse($byName['Descontinuado']['is_active']);
+    }
+
     public function test_GIVEN_a_missing_required_field_WHEN_creating_a_plan_THEN_it_returns_a_field_specific_error(): void
     {
         $this->actingAsSuperAdmin();
