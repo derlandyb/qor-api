@@ -4,17 +4,31 @@ namespace Tests\Feature\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
 
 class AdminAuthControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function venueAdmin(string $email, ApprovalStatus $approvalStatus): AdminUserModel
+    {
+        $admin = AdminUserModel::factory()->create(['email' => $email, 'password' => Hash::make('Senha123')]);
+
+        VenueModel::factory()->create([
+            'venue_admin_user_id' => $admin->id,
+            'approval_status' => $approvalStatus->value,
+        ]);
+
+        return $admin;
+    }
+
     public function test_GIVEN_correct_credentials_for_a_pending_approval_account_WHEN_logging_in_THEN_it_returns_a_token(): void
     {
-        AdminUserModel::factory()->create(['email' => 'venue@example.com', 'password' => Hash::make('Senha123')]);
+        $this->venueAdmin('venue@example.com', ApprovalStatus::PendingApproval);
 
         $response = $this->postJson('/api/admin/v1/auth/login', ['email' => 'venue@example.com', 'password' => 'Senha123']);
 
@@ -23,7 +37,7 @@ class AdminAuthControllerTest extends TestCase
 
     public function test_GIVEN_correct_credentials_for_an_approved_account_WHEN_logging_in_THEN_it_returns_a_token(): void
     {
-        AdminUserModel::factory()->create(['email' => 'aprovado@example.com', 'password' => Hash::make('Senha123')]);
+        $this->venueAdmin('aprovado@example.com', ApprovalStatus::Approved);
 
         $response = $this->postJson('/api/admin/v1/auth/login', ['email' => 'aprovado@example.com', 'password' => 'Senha123']);
 
@@ -32,11 +46,14 @@ class AdminAuthControllerTest extends TestCase
 
     public function test_GIVEN_correct_credentials_for_a_rejected_or_suspended_account_WHEN_logging_in_THEN_it_returns_a_token(): void
     {
-        AdminUserModel::factory()->create(['email' => 'suspenso@example.com', 'password' => Hash::make('Senha123')]);
+        $this->venueAdmin('rejeitado@example.com', ApprovalStatus::Rejected);
+        $this->venueAdmin('suspenso@example.com', ApprovalStatus::Suspended);
 
-        $response = $this->postJson('/api/admin/v1/auth/login', ['email' => 'suspenso@example.com', 'password' => 'Senha123']);
+        $rejectedResponse = $this->postJson('/api/admin/v1/auth/login', ['email' => 'rejeitado@example.com', 'password' => 'Senha123']);
+        $suspendedResponse = $this->postJson('/api/admin/v1/auth/login', ['email' => 'suspenso@example.com', 'password' => 'Senha123']);
 
-        $response->assertStatus(200)->assertJsonStructure(['data', 'token']);
+        $rejectedResponse->assertStatus(200)->assertJsonStructure(['data', 'token']);
+        $suspendedResponse->assertStatus(200)->assertJsonStructure(['data', 'token']);
     }
 
     public function test_GIVEN_the_wrong_password_WHEN_logging_in_THEN_it_returns_401_with_a_generic_message(): void
