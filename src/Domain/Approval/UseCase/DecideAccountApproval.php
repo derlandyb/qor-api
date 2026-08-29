@@ -13,6 +13,7 @@ use QOR\App\Domain\Billing\Enum\SubscribableType;
 use QOR\App\Domain\Billing\UseCase\CreateSubscriptionOnApproval;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
+use QOR\App\Domain\Shared\TransactionManager;
 use QOR\App\Domain\Venue\Venue;
 use QOR\App\Domain\Venue\VenueRepository;
 
@@ -23,6 +24,7 @@ final class DecideAccountApproval
         private readonly PromoterRepository $promoterRepository,
         private readonly ApprovalDecisionRepository $approvalDecisionRepository,
         private readonly CreateSubscriptionOnApproval $createSubscriptionOnApproval,
+        private readonly TransactionManager $transactionManager,
     ) {
     }
 
@@ -45,60 +47,62 @@ final class DecideAccountApproval
             ApprovalOutcome::ForceCancelled => throw new InvalidArgumentException('Este caso de uso não trata cancelamento forçado de eventos.'),
         };
 
-        if ($accountType === ApprovalDecidableType::Venue) {
-            $venue = $this->venueRepository->findById($accountId);
+        return $this->transactionManager->run(function () use ($accountType, $accountId, $outcome, $reason, $decidedBy, $newStatus) {
+            if ($accountType === ApprovalDecidableType::Venue) {
+                $venue = $this->venueRepository->findById($accountId);
 
-            if ($venue === null) {
-                throw new InvalidArgumentException('Conta não encontrada.');
+                if ($venue === null) {
+                    throw new InvalidArgumentException('Conta não encontrada.');
+                }
+
+                if ($outcome === ApprovalOutcome::Approved) {
+                    $this->createSubscriptionOnApproval->execute(SubscribableType::Venue, $accountId);
+                }
+
+                $this->venueRepository->save(new Venue(
+                    id: $venue->id,
+                    venueAdminUserId: $venue->venueAdminUserId,
+                    name: $venue->name,
+                    description: $venue->description,
+                    address: $venue->address,
+                    city: $venue->city,
+                    contactPhone: $venue->contactPhone,
+                    contactEmail: $venue->contactEmail,
+                    approvalStatus: $newStatus,
+                    imageUrl: $venue->imageUrl,
+                ));
+            } else {
+                $promoter = $this->promoterRepository->findById($accountId);
+
+                if ($promoter === null) {
+                    throw new InvalidArgumentException('Conta não encontrada.');
+                }
+
+                if ($outcome === ApprovalOutcome::Approved) {
+                    $this->createSubscriptionOnApproval->execute(SubscribableType::Promoter, $accountId);
+                }
+
+                $this->promoterRepository->save(new Promoter(
+                    id: $promoter->id,
+                    userId: $promoter->userId,
+                    name: $promoter->name,
+                    contactPhone: $promoter->contactPhone,
+                    contactEmail: $promoter->contactEmail,
+                    approvalStatus: $newStatus,
+                    instagram: $promoter->instagram,
+                    tiktok: $promoter->tiktok,
+                ));
             }
 
-            if ($outcome === ApprovalOutcome::Approved) {
-                $this->createSubscriptionOnApproval->execute(SubscribableType::Venue, $accountId);
-            }
-
-            $this->venueRepository->save(new Venue(
-                id: $venue->id,
-                venueAdminUserId: $venue->venueAdminUserId,
-                name: $venue->name,
-                description: $venue->description,
-                address: $venue->address,
-                city: $venue->city,
-                contactPhone: $venue->contactPhone,
-                contactEmail: $venue->contactEmail,
-                approvalStatus: $newStatus,
-                imageUrl: $venue->imageUrl,
+            return $this->approvalDecisionRepository->save(new ApprovalDecision(
+                id: null,
+                decidableType: $accountType,
+                decidableId: $accountId,
+                outcome: $outcome,
+                decidedBy: $decidedBy,
+                decidedAt: new DateTimeImmutable(),
+                reason: $reason,
             ));
-        } else {
-            $promoter = $this->promoterRepository->findById($accountId);
-
-            if ($promoter === null) {
-                throw new InvalidArgumentException('Conta não encontrada.');
-            }
-
-            if ($outcome === ApprovalOutcome::Approved) {
-                $this->createSubscriptionOnApproval->execute(SubscribableType::Promoter, $accountId);
-            }
-
-            $this->promoterRepository->save(new Promoter(
-                id: $promoter->id,
-                userId: $promoter->userId,
-                name: $promoter->name,
-                contactPhone: $promoter->contactPhone,
-                contactEmail: $promoter->contactEmail,
-                approvalStatus: $newStatus,
-                instagram: $promoter->instagram,
-                tiktok: $promoter->tiktok,
-            ));
-        }
-
-        return $this->approvalDecisionRepository->save(new ApprovalDecision(
-            id: null,
-            decidableType: $accountType,
-            decidableId: $accountId,
-            outcome: $outcome,
-            decidedBy: $decidedBy,
-            decidedAt: new DateTimeImmutable(),
-            reason: $reason,
-        ));
+        });
     }
 }

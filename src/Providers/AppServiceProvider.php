@@ -31,6 +31,7 @@ use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\DomainEventPublisher;
 use QOR\App\Domain\Shared\FileUploadPort;
 use QOR\App\Domain\Shared\PasswordHasher;
+use QOR\App\Domain\Shared\TransactionManager;
 use QOR\App\Domain\Social\DomainEvent\FavoriteCreated;
 use QOR\App\Domain\Social\FavoriteRepository;
 use QOR\App\Domain\Social\FriendshipRepository;
@@ -62,6 +63,7 @@ use QOR\App\Infrastructure\Persistence\EloquentUserAddressRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserFavoriteGenreRepository;
 use QOR\App\Infrastructure\Persistence\EloquentUserRepository;
 use QOR\App\Infrastructure\Persistence\EloquentVenueRepository;
+use QOR\App\Infrastructure\Persistence\LaravelTransactionManager;
 use QOR\App\Infrastructure\Security\LaravelPasswordHasher;
 use QOR\App\Infrastructure\Storage\S3UploadAdapter;
 
@@ -92,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
         $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
         $this->app->bind(PasswordResetPort::class, LaravelPasswordResetAdapter::class);
+        $this->app->bind(TransactionManager::class, LaravelTransactionManager::class);
 
         $this->app->singleton(PasswordPolicy::class, function () {
             /** @var int $min */

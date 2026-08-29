@@ -20,13 +20,25 @@ use QOR\App\Domain\Billing\SubscriptionRepository;
 use QOR\App\Domain\Billing\UseCase\CreateSubscriptionOnApproval;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
+use QOR\App\Domain\Shared\Enum\City;
+use QOR\App\Domain\Shared\TransactionManager;
 use QOR\App\Domain\Venue\Venue;
 use QOR\App\Domain\Venue\VenueRepository;
-use QOR\App\Domain\Shared\Enum\City;
 
 class DecideAccountApprovalTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
+
+    private function passthroughTransactionManager(): TransactionManager
+    {
+        return new class implements TransactionManager
+        {
+            public function run(callable $callback): mixed
+            {
+                return $callback();
+            }
+        };
+    }
 
     private function makeVenue(ApprovalStatus $status = ApprovalStatus::PendingApproval): Venue
     {
@@ -119,7 +131,7 @@ class DecideAccountApprovalTest extends TestCase
 
         $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval, $this->passthroughTransactionManager());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -153,7 +165,7 @@ class DecideAccountApprovalTest extends TestCase
                 && $d->reason === 'Documentação inválida'))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -177,7 +189,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Uma justificativa é obrigatória para rejeição ou suspensão.');
@@ -210,7 +222,7 @@ class DecideAccountApprovalTest extends TestCase
             ->with(Mockery::on(fn (ApprovalDecision $d) => $d->outcome === ApprovalOutcome::Suspended))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -244,7 +256,7 @@ class DecideAccountApprovalTest extends TestCase
                 && $d->decidableId === 2))
             ->andReturnUsing(fn (ApprovalDecision $d) => $d);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $result = $useCase->execute(
             accountType: ApprovalDecidableType::Promoter,
@@ -265,7 +277,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Conta não encontrada.');
@@ -285,7 +297,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -304,7 +316,7 @@ class DecideAccountApprovalTest extends TestCase
         $promoterRepository = Mockery::mock(PromoterRepository::class);
         $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated());
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $this->subscriptionNotCreated(), $this->passthroughTransactionManager());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -343,7 +355,7 @@ class DecideAccountApprovalTest extends TestCase
 
         $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval, $this->passthroughTransactionManager());
 
         $useCase->execute(
             accountType: ApprovalDecidableType::Venue,
@@ -380,7 +392,7 @@ class DecideAccountApprovalTest extends TestCase
 
         $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval, $this->passthroughTransactionManager());
 
         $useCase->execute(
             accountType: ApprovalDecidableType::Promoter,
@@ -411,7 +423,7 @@ class DecideAccountApprovalTest extends TestCase
 
         $createSubscriptionOnApproval = new CreateSubscriptionOnApproval($planRepository, $subscriptionRepository);
 
-        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval);
+        $useCase = new DecideAccountApproval($venueRepository, $promoterRepository, $decisionRepository, $createSubscriptionOnApproval, $this->passthroughTransactionManager());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Configure um plano gratuito padrão antes de aprovar contas.');
@@ -423,5 +435,53 @@ class DecideAccountApprovalTest extends TestCase
             reason: null,
             decidedBy: 99,
         );
+    }
+
+    public function test_GIVEN_a_pending_venue_WHEN_approving_THEN_the_whole_decision_runs_inside_a_single_transaction(): void
+    {
+        $venue = $this->makeVenue();
+
+        $venueRepository = Mockery::mock(VenueRepository::class);
+        $venueRepository->shouldReceive('findById')->once()->with(1)->andReturn($venue);
+        $venueRepository->shouldReceive('save')->once()->andReturnUsing(fn (Venue $v) => $v);
+
+        $promoterRepository = Mockery::mock(PromoterRepository::class);
+
+        $decisionRepository = Mockery::mock(ApprovalDecisionRepository::class);
+        $decisionRepository->shouldReceive('save')
+            ->once()
+            ->andReturnUsing(fn (ApprovalDecision $d) => new ApprovalDecision(
+                id: 100,
+                decidableType: $d->decidableType,
+                decidableId: $d->decidableId,
+                outcome: $d->outcome,
+                decidedBy: $d->decidedBy,
+                decidedAt: $d->decidedAt,
+                reason: $d->reason,
+            ));
+
+        $transactionManager = Mockery::mock(TransactionManager::class);
+        $transactionManager->shouldReceive('run')
+            ->once()
+            ->with(Mockery::type('callable'))
+            ->andReturnUsing(fn (callable $callback) => $callback());
+
+        $useCase = new DecideAccountApproval(
+            $venueRepository,
+            $promoterRepository,
+            $decisionRepository,
+            $this->subscriptionNotCreated(),
+            $transactionManager,
+        );
+
+        $result = $useCase->execute(
+            accountType: ApprovalDecidableType::Venue,
+            accountId: 1,
+            outcome: ApprovalOutcome::Rejected,
+            reason: 'Documentação inválida',
+            decidedBy: 99,
+        );
+
+        $this->assertSame(100, $result->id);
     }
 }
