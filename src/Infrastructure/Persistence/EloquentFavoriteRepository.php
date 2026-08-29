@@ -44,6 +44,14 @@ class EloquentFavoriteRepository implements FavoriteRepository
             ->exists();
     }
 
+    public function listUserIdsWhoFavorited(int $eventId): array
+    {
+        /** @var list<int> $userIds */
+        $userIds = FavoriteModel::where('event_id', $eventId)->pluck('user_id')->all();
+
+        return $userIds;
+    }
+
     public function listForUser(int $userId, ?string $cursor): FavoritePage
     {
         /** @var int $pageSize */

@@ -84,6 +84,23 @@ final class FakeFavoriteRepositoryForNearby implements FavoriteRepository
 
         return false;
     }
+
+    public function listUserIdsWhoFavorited(int $eventId): array
+    {
+        $userIds = [];
+
+        foreach ($this->favoritesByUser as $userId => $events) {
+            foreach ($events as $event) {
+                if ($event->id === $eventId) {
+                    $userIds[] = $userId;
+
+                    break;
+                }
+            }
+        }
+
+        return $userIds;
+    }
 }
 
 final class InMemoryNotificationPreferenceRepositoryForNearby implements NotificationPreferenceRepository
