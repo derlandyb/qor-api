@@ -1456,7 +1456,7 @@
                     "requests"
                   ]
                 },
-                "description": "SOC-01 — sends a friend request to another fan. `recipient_user_id` must be an existing user id (error: \"Usuário destinatário não encontrado.\" if not found). Requires fan bearer token.",
+                "description": "FAV-05 — sends a friend request to another fan. `recipient_user_id` must be an existing user id (error: \"Usuário destinatário não encontrado.\" if not found). Requires fan bearer token.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"recipient_user_id\": 2\n}",
@@ -1492,7 +1492,7 @@
                     "requests"
                   ]
                 },
-                "description": "SOC-02 — lists pending friend requests received by the logged-in fan. Requires fan bearer token."
+                "description": "FAV-11 — lists pending friend requests received by the logged-in fan. Requires fan bearer token."
               },
               "response": []
             },
@@ -1527,7 +1527,7 @@
                     }
                   ]
                 },
-                "description": "SOC-02 — accepts a pending friend request addressed to the logged-in fan. No request body. `id` is the friendship request id. Requires fan bearer token."
+                "description": "FAV-09 — accepts a pending friend request addressed to the logged-in fan. No request body. `id` is the friendship request id. Requires fan bearer token."
               },
               "response": []
             },
@@ -1562,7 +1562,7 @@
                     }
                   ]
                 },
-                "description": "SOC-02 — rejects a pending friend request addressed to the logged-in fan. No request body. `id` is the friendship request id. Requires fan bearer token. Response: `{\"message\": \"Solicitação de amizade recusada.\"}`."
+                "description": "FAV-10 — rejects a pending friend request addressed to the logged-in fan. No request body. `id` is the friendship request id. Requires fan bearer token. Response: `{\"message\": \"Solicitação de amizade recusada.\"}`."
               },
               "response": []
             },
@@ -1595,7 +1595,7 @@
                     }
                   ]
                 },
-                "description": "SOC-03 — removes an existing friendship with `userId`. No request body. Requires fan bearer token. Response: `{\"message\": \"Amizade removida.\"}`."
+                "description": "FAV-12 — removes an existing friendship with `userId`. No request body. Requires fan bearer token. Response: `{\"message\": \"Amizade removida.\"}`."
               },
               "response": []
             },
@@ -1627,7 +1627,7 @@
                     }
                   ]
                 },
-                "description": "SOC-02 — cursor-paginated list of the logged-in fan's accepted friendships. `cursor` query param optional. Requires fan bearer token."
+                "description": "FAV-15 — cursor-paginated list of the logged-in fan's accepted friendships. `cursor` query param optional. Requires fan bearer token."
               },
               "response": []
             }
@@ -1666,7 +1666,7 @@
                     }
                   ]
                 },
-                "description": "SOC-04 — lists the logged-in fan's friends who favorited/are interested in this event. `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token."
+                "description": "FAV-18 — lists the logged-in fan's friends who favorited/are interested in this event. `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token."
               },
               "response": []
             },
@@ -1705,7 +1705,7 @@
                     }
                   ]
                 },
-                "description": "SOC-05 — shares an event with a friend (triggers a notification to the friend). `friend_user_id` must be an existing user id (error: \"Amigo não encontrado.\" if not found). `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token. Response: `{\"message\": \"Evento compartilhado com sucesso.\"}`.",
+                "description": "FAV-21/FAV-22 — shares an event with a friend (triggers a notification to the friend). `friend_user_id` must be an existing user id (error: \"Amigo não encontrado.\" if not found). `id` must be a valid event id — returns 404 with `{\"message\": \"Evento não encontrado.\"}` otherwise. Requires fan bearer token. Response: `{\"message\": \"Evento compartilhado com sucesso.\"}`.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"friend_user_id\": 2\n}",
@@ -1746,7 +1746,7 @@
                     "notification-preferences"
                   ]
                 },
-                "description": "NOTIF-06/NOTIF-07 — the logged-in fan's notification preferences. Defaults are returned if none have been saved yet. Requires fan bearer token."
+                "description": "AUTH-24 — the logged-in fan's notification preferences. Defaults are returned if none have been saved yet. Requires fan bearer token."
               },
               "response": []
             },
@@ -1778,7 +1778,7 @@
                     "notification-preferences"
                   ]
                 },
-                "description": "NOTIF-06/NOTIF-07 — updates the logged-in fan's notification preferences. All fields optional/sometimes-present. `trigger_event_changed_cancelled` is always-on and not togglable (NOTIF-07's always-fires rule) — it is silently ignored even if sent. Requires fan bearer token.",
+                "description": "AUTH-24 — updates the logged-in fan's notification preferences. All fields optional/sometimes-present. `trigger_event_changed_cancelled` is always-on and not togglable (NOTIF-07's always-fires rule) — it is silently ignored even if sent. Requires fan bearer token.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"push_enabled\": true,\n  \"email_enabled\": true,\n  \"silence_all\": false,\n  \"trigger_nearby_reminder\": true,\n  \"trigger_friend_interest\": true,\n  \"trigger_new_regional\": false\n}",
@@ -1819,7 +1819,7 @@
                     "address"
                   ]
                 },
-                "description": "PREF-01 — the logged-in fan's saved address (used for nearby-event discovery radius). Returns `{\"data\": null}` if none saved yet. Requires fan bearer token."
+                "description": "AUTH-20 — the logged-in fan's saved address (used for nearby-event discovery radius). Returns `{\"data\": null}` if none saved yet. Requires fan bearer token."
               },
               "response": []
             },
@@ -1851,7 +1851,7 @@
                     "address"
                   ]
                 },
-                "description": "PREF-01 — sets/updates the logged-in fan's address. `city` is one of: vitoria, vila_velha, serra, cariacica (error: \"Cidade inválida.\" otherwise). `state` required (2-letter UF). `street`/`number`/`complement` optional/nullable. Requires fan bearer token.",
+                "description": "AUTH-20/AUTH-21 — sets/updates the logged-in fan's address. `city` is one of: vitoria, vila_velha, serra, cariacica (error: \"Cidade inválida.\" otherwise). `state` required (2-letter UF). `street`/`number`/`complement` optional/nullable. Requires fan bearer token.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"city\": \"vitoria\",\n  \"state\": \"ES\",\n  \"street\": \"Rua das Palmeiras\",\n  \"number\": \"123\",\n  \"complement\": \"Apto 302\"\n}",
@@ -1887,7 +1887,7 @@
                     "preferences"
                   ]
                 },
-                "description": "PREF-02/PREF-03 — the logged-in fan's favorite genres and search radius (km). Requires fan bearer token."
+                "description": "AUTH-23 — the logged-in fan's favorite genres and search radius (km). Requires fan bearer token."
               },
               "response": []
             },
@@ -1919,7 +1919,7 @@
                     "preferences"
                   ]
                 },
-                "description": "PREF-02/PREF-03 — updates the logged-in fan's favorite genres and/or search radius. Both fields optional/independent (`sometimes`) — send only the one(s) you want to change. `genre_ids` must reference existing genres (error: \"Gênero inválido.\" otherwise). `radius_km` must be 1-100 (errors: \"O raio de busca deve ser de pelo menos 1 km.\" / \"...no máximo 100 km.\"). Requires fan bearer token.",
+                "description": "AUTH-23 — updates the logged-in fan's favorite genres and/or search radius. Both fields optional/independent (`sometimes`) — send only the one(s) you want to change. `genre_ids` must reference existing genres (error: \"Gênero inválido.\" otherwise). `radius_km` must be 1-100 (errors: \"O raio de busca deve ser de pelo menos 1 km.\" / \"...no máximo 100 km.\"). Requires fan bearer token.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"genre_ids\": [\n    1,\n    4\n  ],\n  \"radius_km\": 15\n}",
