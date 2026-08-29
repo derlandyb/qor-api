@@ -13,12 +13,17 @@
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\V1\AuthController;
 use QOR\App\Http\Controllers\Api\V1\EventController;
+use QOR\App\Http\Controllers\Api\V1\FavoriteController;
 use QOR\App\Http\Controllers\Api\V1\ProfileController;
 
 Route::middleware('throttle:qor-public-api')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{id}', [EventController::class, 'show'])->whereNumber('id');
 });
+
+Route::post('/events/{id}/favorite', [FavoriteController::class, 'toggle'])
+    ->whereNumber('id')
+    ->middleware(['auth:fan', 'guard.fan']);
 
 Route::prefix('auth')->middleware('throttle:qor-auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -50,4 +55,5 @@ Route::prefix('profile')->middleware(['auth:fan', 'guard.fan'])->group(function 
     Route::get('/data-rights/export', [ProfileController::class, 'dataRightsExport']);
     Route::post('/data-rights/delete', [ProfileController::class, 'dataRightsDelete']);
     Route::post('/data-rights/revoke', [ProfileController::class, 'dataRightsRevoke']);
+    Route::get('/favorites', [FavoriteController::class, 'index']);
 });
