@@ -16,14 +16,22 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        AdminUserModel::query()->updateOrCreate(
+        if (app()->environment('production')) {
+            return;
+        }
+
+        $admin = AdminUserModel::query()->updateOrCreate(
             ['email' => 'superadmin@qor.dev'],
             [
                 'name' => 'QOR Super Admin',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
-                'is_super_admin' => true,
             ],
         );
+
+        // is_super_admin is deliberately absent from $fillable (privilege
+        // escalation risk via mass-assignment) — forceFill it explicitly,
+        // same pattern AdminUserFactory::superAdmin() already uses.
+        $admin->forceFill(['is_super_admin' => true])->save();
     }
 }
