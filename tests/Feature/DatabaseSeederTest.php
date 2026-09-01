@@ -32,5 +32,21 @@ class DatabaseSeederTest extends TestCase
         $seededGenreCount = DB::table('genres')->count();
         $genresUsedByEvents = DB::table('events')->distinct()->count('genre_id');
         $this->assertSame($seededGenreCount, $genresUsedByEvents);
+
+        $this->assertDatabaseHas('admin_users', [
+            'email' => 'superadmin@qor.dev',
+            'is_super_admin' => true,
+        ]);
+    }
+
+    public function test_GIVEN_the_admin_user_seeder_already_ran_WHEN_seeding_again_THEN_it_does_not_duplicate_the_super_admin_row(): void
+    {
+        $this->seed(\Database\Seeders\AdminUserSeeder::class);
+        $this->seed(\Database\Seeders\AdminUserSeeder::class);
+
+        $this->assertSame(
+            1,
+            DB::table('admin_users')->where('email', 'superadmin@qor.dev')->count(),
+        );
     }
 }
