@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use QOR\App\Domain\Admin\AdminAccount;
+use QOR\App\Domain\Admin\Enum\AccountType;
 use QOR\App\Domain\Admin\Exception\InvalidCredentials;
 use QOR\App\Domain\Admin\UseCase\AuthenticateAdmin;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
@@ -59,7 +60,9 @@ class AdminAuthController extends Controller
             isSuperAdmin: (bool) $admin->is_super_admin,
         );
 
-        return response()->json(['data' => $this->accountToArray($account, $this->accountTypeFor($account, $admin))]);
+        return response()->json([
+            'data' => $this->accountToArray($account, $this->accountTypeFor($account, $admin)->value),
+        ]);
     }
 
     private function field(FormRequest $request, string $key): string
@@ -100,17 +103,17 @@ class AdminAuthController extends Controller
         return $data;
     }
 
-    private function accountTypeFor(AdminAccount $account, AdminUserModel $admin): string
+    private function accountTypeFor(AdminAccount $account, AdminUserModel $admin): AccountType
     {
         if ($account->isSuperAdmin) {
-            return 'super_admin';
+            return AccountType::SuperAdmin;
         }
 
         [$createdByType] = $this->organizerIdentityResolver->resolve($admin);
 
         return match ($createdByType) {
-            EventCreatedByType::VenueAdmin => 'venue_admin',
-            EventCreatedByType::Promoter => 'promoter',
+            EventCreatedByType::VenueAdmin => AccountType::VenueAdmin,
+            EventCreatedByType::Promoter => AccountType::Promoter,
         };
     }
 

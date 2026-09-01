@@ -29,7 +29,7 @@ class PromoterController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        $promoterModel = PromoterModel::where('user_id', $admin->id)->first();
+        $promoterModel = $this->findOwnPromoterModel($admin);
         if ($promoterModel === null) {
             return response()->json(['message' => 'Promoter não encontrado.'], 404);
         }
@@ -66,7 +66,7 @@ class PromoterController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        $promoterModel = PromoterModel::where('user_id', $admin->id)->first();
+        $promoterModel = $this->findOwnPromoterModel($admin);
         if ($promoterModel === null) {
             return response()->json(['message' => 'Promoter não encontrado.'], 404);
         }
@@ -81,6 +81,11 @@ class PromoterController extends Controller
         );
 
         return response()->json(['data' => $this->promoterToArray($promoter)]);
+    }
+
+    private function findOwnPromoterModel(AdminUserModel $admin): ?PromoterModel
+    {
+        return PromoterModel::where('user_id', $admin->id)->first();
     }
 
     private function field(FormRequest $request, string $key): string

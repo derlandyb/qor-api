@@ -32,7 +32,7 @@ class VenueController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        $venueModel = VenueModel::where('venue_admin_user_id', $admin->id)->first();
+        $venueModel = $this->findOwnVenueModel($admin);
         if ($venueModel === null) {
             return response()->json(['message' => 'Venue não encontrada.'], 404);
         }
@@ -70,7 +70,7 @@ class VenueController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        $venueModel = VenueModel::where('venue_admin_user_id', $admin->id)->first();
+        $venueModel = $this->findOwnVenueModel($admin);
         if ($venueModel === null) {
             return response()->json(['message' => 'Venue não encontrada.'], 404);
         }
@@ -97,6 +97,11 @@ class VenueController extends Controller
         );
 
         return response()->json(['data' => $this->venueToArray($venue)]);
+    }
+
+    private function findOwnVenueModel(AdminUserModel $admin): ?VenueModel
+    {
+        return VenueModel::where('venue_admin_user_id', $admin->id)->first();
     }
 
     private function field(FormRequest $request, string $key): string

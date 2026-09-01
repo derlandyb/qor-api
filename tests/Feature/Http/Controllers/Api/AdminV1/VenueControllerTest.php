@@ -21,20 +21,17 @@ class VenueControllerTest extends TestCase
     {
         parent::setUp();
 
-        // Route registered here only for this test suite: the orchestrator
-        // wires routes/api_admin_v1.php centrally once every controller
-        // task lands, to avoid merge conflicts between parallel agents.
+        // NOTE: this suite's `register` test hits `/api/admin/v1/venues`,
+        // not the real `/api/admin/v1/venues/register` route wired in
+        // routes/api_admin_v1.php — a pre-existing path mismatch predating
+        // this file's `show()`/GET work, left as-is since fixing it is out
+        // of scope here. `venues/me` GET/PATCH are NOT re-registered below:
+        // both are already wired centrally and covered without a local
+        // override (verified by running this suite with the override
+        // removed — only the `register` override is load-bearing).
         Route::middleware('api')
             ->prefix('api/admin/v1')
             ->post('venues', [VenueController::class, 'register']);
-
-        Route::middleware(['api', 'auth:admin', 'guard.admin'])
-            ->prefix('api/admin/v1')
-            ->patch('venues/me', [VenueController::class, 'update']);
-
-        Route::middleware(['api', 'auth:admin', 'guard.admin'])
-            ->prefix('api/admin/v1')
-            ->get('venues/me', [VenueController::class, 'show']);
     }
 
     private function actingAsVenueAdmin(): VenueModel
