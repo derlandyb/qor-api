@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use QOR\App\Http\Controllers\Api\AdminV1\VenueController;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
 
@@ -30,6 +31,10 @@ class VenueControllerTest extends TestCase
         Route::middleware(['api', 'auth:admin', 'guard.admin'])
             ->prefix('api/admin/v1')
             ->patch('venues/me', [VenueController::class, 'update']);
+
+        Route::middleware(['api', 'auth:admin', 'guard.admin'])
+            ->prefix('api/admin/v1')
+            ->get('venues/me', [VenueController::class, 'show']);
     }
 
     private function actingAsVenueAdmin(): VenueModel
@@ -151,6 +156,36 @@ class VenueControllerTest extends TestCase
     public function test_GIVEN_no_authenticated_admin_WHEN_editing_a_venue_profile_THEN_it_is_rejected(): void
     {
         $response = $this->patchJson('/api/admin/v1/venues/me', ['name' => 'Nome Qualquer']);
+
+        $response->assertStatus(401);
+    }
+
+    public function test_GIVEN_an_authenticated_venue_admin_WHEN_getting_their_own_venue_THEN_it_returns_the_venue_including_its_address(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+
+        $response = $this->getJson('/api/admin/v1/venues/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $venue->id)
+            ->assertJsonPath('data.name', $venue->name)
+            ->assertJsonPath('data.address', $venue->address);
+    }
+
+    public function test_GIVEN_an_authenticated_promoter_WHEN_getting_venues_me_THEN_it_returns_404(): void
+    {
+        $admin = AdminUserModel::factory()->create();
+        PromoterModel::factory()->approved()->create(['user_id' => $admin->id]);
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        $response = $this->getJson('/api/admin/v1/venues/me');
+
+        $response->assertStatus(404)->assertJsonPath('message', 'Venue não encontrada.');
+    }
+
+    public function test_GIVEN_no_authenticated_admin_WHEN_getting_venues_me_THEN_it_is_rejected(): void
+    {
+        $response = $this->getJson('/api/admin/v1/venues/me');
 
         $response->assertStatus(401);
     }

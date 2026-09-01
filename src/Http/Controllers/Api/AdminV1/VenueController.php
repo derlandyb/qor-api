@@ -4,12 +4,14 @@ namespace QOR\App\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Domain\Shared\UploadableFile;
 use QOR\App\Domain\Venue\UseCase\EditVenueProfile;
 use QOR\App\Domain\Venue\UseCase\RegisterVenue;
 use QOR\App\Domain\Venue\Venue;
+use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Http\Controllers\Controller;
 use QOR\App\Http\Requests\Api\AdminV1\RegisterVenueRequest;
 use QOR\App\Http\Requests\Api\AdminV1\UpdateVenueProfileRequest;
@@ -21,7 +23,26 @@ class VenueController extends Controller
     public function __construct(
         private readonly RegisterVenue $registerVenue,
         private readonly EditVenueProfile $editVenueProfile,
+        private readonly VenueRepository $venues,
     ) {
+    }
+
+    public function show(Request $request): JsonResponse
+    {
+        /** @var AdminUserModel $admin */
+        $admin = $request->user();
+
+        $venueModel = VenueModel::where('venue_admin_user_id', $admin->id)->first();
+        if ($venueModel === null) {
+            return response()->json(['message' => 'Venue não encontrada.'], 404);
+        }
+
+        $venue = $this->venues->findById((int) $venueModel->id);
+        if ($venue === null) {
+            return response()->json(['message' => 'Venue não encontrada.'], 404);
+        }
+
+        return response()->json(['data' => $this->venueToArray($venue)]);
     }
 
     public function register(RegisterVenueRequest $request): JsonResponse

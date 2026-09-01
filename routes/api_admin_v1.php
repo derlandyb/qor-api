@@ -32,6 +32,7 @@ Route::post('/auth/logout', [AdminAuthController::class, 'logout'])
 
 Route::middleware(['auth:admin', 'guard.admin'])->group(function () {
     Route::get('/me', [AdminAuthController::class, 'me']);
+    Route::get('/venues/me', [VenueController::class, 'show']);
     Route::patch('/venues/me', [VenueController::class, 'update']);
     Route::patch('/promoters/me', [PromoterController::class, 'update']);
     Route::get('/dashboard', [DashboardController::class, 'index']);
