@@ -34,6 +34,7 @@ Route::middleware(['auth:admin', 'guard.admin'])->group(function () {
     Route::get('/me', [AdminAuthController::class, 'me']);
     Route::get('/venues/me', [VenueController::class, 'show']);
     Route::patch('/venues/me', [VenueController::class, 'update']);
+    Route::get('/promoters/me', [PromoterController::class, 'show']);
     Route::patch('/promoters/me', [PromoterController::class, 'update']);
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/subscription', [SubscriptionController::class, 'show']);
