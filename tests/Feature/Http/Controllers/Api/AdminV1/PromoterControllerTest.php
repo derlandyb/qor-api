@@ -8,6 +8,7 @@ use Laravel\Sanctum\Sanctum;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
 
 class PromoterControllerTest extends TestCase
@@ -18,16 +19,17 @@ class PromoterControllerTest extends TestCase
     {
         parent::setUp();
 
-        // Route registered here only for this test suite: the orchestrator
-        // wires routes/api_admin_v1.php centrally once every controller
-        // task lands, to avoid merge conflicts between parallel agents.
+        // NOTE: this suite's `register` test hits `/api/admin/v1/promoters`,
+        // not the real `/api/admin/v1/promoters/register` route wired in
+        // routes/api_admin_v1.php — a pre-existing path mismatch predating
+        // this file's `show()`/GET work, left as-is since fixing it is out
+        // of scope here. `promoters/me` GET/PATCH are NOT re-registered
+        // below: both are already wired centrally and covered without a
+        // local override (verified by running this suite with the override
+        // removed — only the `register` override is load-bearing).
         Route::middleware('api')
             ->prefix('api/admin/v1')
             ->post('promoters', [PromoterController::class, 'register']);
-
-        Route::middleware(['api', 'auth:admin', 'guard.admin'])
-            ->prefix('api/admin/v1')
-            ->patch('promoters/me', [PromoterController::class, 'update']);
     }
 
     private function actingAsPromoter(): PromoterModel
@@ -139,6 +141,36 @@ class PromoterControllerTest extends TestCase
     public function test_GIVEN_no_authenticated_admin_WHEN_editing_a_promoter_profile_THEN_it_is_rejected(): void
     {
         $response = $this->patchJson('/api/admin/v1/promoters/me', ['name' => 'Nome Qualquer']);
+
+        $response->assertStatus(401);
+    }
+
+    public function test_GIVEN_an_authenticated_promoter_WHEN_getting_their_own_promoter_THEN_it_returns_the_promoter(): void
+    {
+        $promoter = $this->actingAsPromoter();
+
+        $response = $this->getJson('/api/admin/v1/promoters/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $promoter->id)
+            ->assertJsonPath('data.name', $promoter->name)
+            ->assertJsonPath('data.instagram', $promoter->instagram);
+    }
+
+    public function test_GIVEN_an_authenticated_venue_admin_WHEN_getting_promoters_me_THEN_it_returns_404(): void
+    {
+        $admin = AdminUserModel::factory()->create();
+        VenueModel::factory()->approved()->create(['venue_admin_user_id' => $admin->id]);
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        $response = $this->getJson('/api/admin/v1/promoters/me');
+
+        $response->assertStatus(404)->assertJsonPath('message', 'Promoter não encontrado.');
+    }
+
+    public function test_GIVEN_no_authenticated_admin_WHEN_getting_promoters_me_THEN_it_is_rejected(): void
+    {
+        $response = $this->getJson('/api/admin/v1/promoters/me');
 
         $response->assertStatus(401);
     }

@@ -4,7 +4,9 @@ namespace QOR\App\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use QOR\App\Domain\Promoter\Promoter;
+use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Promoter\UseCase\EditPromoterProfile;
 use QOR\App\Domain\Promoter\UseCase\RegisterPromoter;
 use QOR\App\Http\Controllers\Controller;
@@ -18,7 +20,26 @@ class PromoterController extends Controller
     public function __construct(
         private readonly RegisterPromoter $registerPromoter,
         private readonly EditPromoterProfile $editPromoterProfile,
+        private readonly PromoterRepository $promoters,
     ) {
+    }
+
+    public function show(Request $request): JsonResponse
+    {
+        /** @var AdminUserModel $admin */
+        $admin = $request->user();
+
+        $promoterModel = $this->findOwnPromoterModel($admin);
+        if ($promoterModel === null) {
+            return response()->json(['message' => 'Promoter não encontrado.'], 404);
+        }
+
+        $promoter = $this->promoters->findById((int) $promoterModel->id);
+        if ($promoter === null) {
+            return response()->json(['message' => 'Promoter não encontrado.'], 404);
+        }
+
+        return response()->json(['data' => $this->promoterToArray($promoter)]);
     }
 
     public function register(RegisterPromoterRequest $request): JsonResponse
@@ -45,7 +66,7 @@ class PromoterController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        $promoterModel = PromoterModel::where('user_id', $admin->id)->first();
+        $promoterModel = $this->findOwnPromoterModel($admin);
         if ($promoterModel === null) {
             return response()->json(['message' => 'Promoter não encontrado.'], 404);
         }
@@ -60,6 +81,11 @@ class PromoterController extends Controller
         );
 
         return response()->json(['data' => $this->promoterToArray($promoter)]);
+    }
+
+    private function findOwnPromoterModel(AdminUserModel $admin): ?PromoterModel
+    {
+        return PromoterModel::where('user_id', $admin->id)->first();
     }
 
     private function field(FormRequest $request, string $key): string
