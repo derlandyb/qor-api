@@ -4,8 +4,10 @@ namespace Tests\Feature\Http\Controllers\Api\AdminV1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\Sanctum;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Infrastructure\Persistence\Eloquent\AdminUserModel;
+use QOR\App\Infrastructure\Persistence\Eloquent\PromoterModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
 use QOR\App\Infrastructure\Persistence\Eloquent\VenueModel;
 use Tests\TestCase;
@@ -117,5 +119,55 @@ class AdminAuthControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.permissions', [])
             ->assertJsonMissingPath('data.is_super_admin');
+    }
+
+    public function test_GIVEN_an_authenticated_super_admin_WHEN_getting_me_THEN_the_response_reports_account_type_super_admin(): void
+    {
+        $admin = AdminUserModel::factory()->create(['is_super_admin' => true]);
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        $response = $this->getJson('/api/admin/v1/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $admin->id)
+            ->assertJsonPath('data.name', $admin->name)
+            ->assertJsonPath('data.email', $admin->email)
+            ->assertJsonPath('data.account_type', 'super_admin')
+            ->assertJsonPath('data.permissions', ['approvals.manage', 'plans.manage'])
+            ->assertJsonMissingPath('data.token')
+            ->assertJsonMissingPath('data.is_super_admin');
+    }
+
+    public function test_GIVEN_an_authenticated_venue_admin_WHEN_getting_me_THEN_the_response_reports_account_type_venue_admin(): void
+    {
+        $admin = AdminUserModel::factory()->create();
+        VenueModel::factory()->create(['venue_admin_user_id' => $admin->id]);
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        $response = $this->getJson('/api/admin/v1/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.account_type', 'venue_admin')
+            ->assertJsonPath('data.permissions', []);
+    }
+
+    public function test_GIVEN_an_authenticated_promoter_WHEN_getting_me_THEN_the_response_reports_account_type_promoter(): void
+    {
+        $admin = AdminUserModel::factory()->create();
+        PromoterModel::factory()->create(['user_id' => $admin->id]);
+        Sanctum::actingAs($admin, ['*'], 'admin');
+
+        $response = $this->getJson('/api/admin/v1/me');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.account_type', 'promoter')
+            ->assertJsonPath('data.permissions', []);
+    }
+
+    public function test_GIVEN_no_authenticated_admin_WHEN_getting_me_THEN_it_is_rejected(): void
+    {
+        $response = $this->getJson('/api/admin/v1/me');
+
+        $response->assertStatus(401);
     }
 }
