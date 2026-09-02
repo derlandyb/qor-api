@@ -2,6 +2,7 @@
 
 namespace QOR\App\Infrastructure\Auth;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
@@ -87,6 +88,14 @@ class OtpAdapter implements OtpVerificationPort
         );
 
         Notification::route('mail', $identifier)->notify(new OtpCodeNotification($code, $purpose));
+
+        // Local/testing-only: lets DebugController (routes/api_v1.php,
+        // never registered outside those two environments) hand the
+        // plaintext code back to E2E tests, since it's never persisted
+        // anywhere durable otherwise (only a one-way hash is stored above).
+        if (app()->environment(['local', 'testing'])) {
+            Cache::put("otp_debug:{$purpose}:{$identifier}", $code, now()->addMinutes(15));
+        }
     }
 
     private function consume(string $purpose, string $identifier, string $code): bool
