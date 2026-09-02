@@ -85,6 +85,37 @@ class AdminAuthControllerTest extends TestCase
         $this->assertSame(0, $admin->tokens()->count());
     }
 
+    public function test_GIVEN_a_session_authenticated_admin_WHEN_logging_out_THEN_it_succeeds_and_ends_the_session(): void
+    {
+        // The actual credential qor-admin's SPA presents (ARCHITECTURE §2 —
+        // cookie mode, never a bearer token): currentAccessToken() resolves
+        // to Sanctum's TransientToken here, not a real PersonalAccessToken
+        // row — logout() must not assume the bearer-token shape.
+        $admin = AdminUserModel::factory()->create();
+        $this->actingAs($admin, 'admin-session');
+
+        $response = $this->postJson('/api/admin/v1/auth/logout');
+
+        $response->assertStatus(200);
+        $this->assertGuest('admin-session');
+    }
+
+    public function test_GIVEN_a_request_from_a_stateful_domain_WHEN_logging_in_THEN_it_sets_a_session_cookie(): void
+    {
+        // Regression guard for the stateful-middleware gap this branch
+        // fixes (bootstrap/app.php): without EnsureFrontendRequestsAreStateful
+        // on the api group, this response carries no session cookie at all,
+        // and every subsequent cookie-based request stays unauthenticated
+        // in a real browser even though login() itself reports success.
+        $admin = $this->venueAdmin('cookie-check@example.com', ApprovalStatus::Approved);
+
+        $response = $this->withHeader('Origin', 'http://localhost:3000')
+            ->postJson('/api/admin/v1/auth/login', ['email' => 'cookie-check@example.com', 'password' => 'Senha123']);
+
+        $response->assertStatus(200);
+        $response->assertCookie(config('session.cookie'));
+    }
+
     public function test_GIVEN_a_fan_token_WHEN_calling_an_admin_guarded_route_THEN_it_is_rejected(): void
     {
         $fan = UserModel::factory()->create();

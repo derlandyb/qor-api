@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 use QOR\App\Domain\Admin\AdminAccount;
 use QOR\App\Domain\Admin\Enum\AccountType;
 use QOR\App\Domain\Admin\Exception\InvalidCredentials;
@@ -43,7 +44,24 @@ class AdminAuthController extends Controller
         /** @var AdminUserModel $admin */
         $admin = $request->user();
 
-        $admin->currentAccessToken()->delete();
+        // A session-cookie request (the only credential qor-admin's SPA
+        // actually presents) resolves currentAccessToken() to Sanctum's
+        // TransientToken, which has no delete() — only a genuine bearer-
+        // token request has a real PersonalAccessToken row to revoke.
+        // HasApiTokens' PHPDoc claims this always returns PersonalAccessToken,
+        // which is wrong at runtime for a session request — hence the ignore.
+        $token = $admin->currentAccessToken();
+        // @phpstan-ignore instanceof.alwaysTrue
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        Auth::guard('admin-session')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Sessão encerrada.']);
     }
