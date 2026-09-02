@@ -15,6 +15,9 @@ class AuthControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** phpunit.xml sets APP_ENV=testing, so OtpAdapter::generateCode() always returns this fixed value here. */
+    private const FIXED_TEST_CODE = '000000';
+
     public function test_GIVEN_valid_fields_WHEN_registering_THEN_it_creates_an_unverified_account_and_sends_an_otp_code(): void
     {
         Notification::fake();
@@ -199,11 +202,11 @@ class AuthControllerTest extends TestCase
     public function test_GIVEN_a_freshly_registered_account_WHEN_verifying_with_the_correct_otp_code_THEN_the_account_becomes_verified(): void
     {
         $user = UserModel::factory()->unverified()->create(['email' => 'ana@example.com']);
-        $code = $this->issueAndCaptureOtpCode('ana@example.com', '/api/v1/auth/email/verification-notification');
+        $this->postJson('/api/v1/auth/email/verification-notification', ['email' => 'ana@example.com']);
 
         $response = $this->postJson('/api/v1/auth/email/verify-code', [
             'email' => 'ana@example.com',
-            'code' => $code,
+            'code' => self::FIXED_TEST_CODE,
         ]);
 
         $response->assertStatus(200);
@@ -214,11 +217,11 @@ class AuthControllerTest extends TestCase
     public function test_GIVEN_the_wrong_otp_code_WHEN_verifying_email_THEN_it_returns_422_and_the_account_stays_unverified(): void
     {
         $user = UserModel::factory()->unverified()->create(['email' => 'ana@example.com']);
-        $this->issueAndCaptureOtpCode('ana@example.com', '/api/v1/auth/email/verification-notification');
+        $this->postJson('/api/v1/auth/email/verification-notification', ['email' => 'ana@example.com']);
 
         $response = $this->postJson('/api/v1/auth/email/verify-code', [
             'email' => 'ana@example.com',
-            'code' => '000000',
+            'code' => '999999',
         ]);
 
         $response->assertStatus(422)->assertJsonPath('message', 'Código inválido ou expirado.');
@@ -271,11 +274,11 @@ class AuthControllerTest extends TestCase
     public function test_GIVEN_a_registered_email_WHEN_requesting_a_password_reset_code_and_verifying_it_THEN_it_returns_a_usable_reset_token(): void
     {
         UserModel::factory()->create(['email' => 'ana@example.com']);
-        $code = $this->issueAndCaptureOtpCode('ana@example.com', '/api/v1/auth/password/forgot');
+        $this->postJson('/api/v1/auth/password/forgot', ['email' => 'ana@example.com']);
 
         $response = $this->postJson('/api/v1/auth/password/verify-code', [
             'email' => 'ana@example.com',
-            'code' => $code,
+            'code' => self::FIXED_TEST_CODE,
         ]);
 
         $response->assertStatus(200)->assertJsonStructure(['data' => ['token']]);
@@ -291,37 +294,13 @@ class AuthControllerTest extends TestCase
     public function test_GIVEN_the_wrong_password_reset_code_WHEN_verifying_THEN_it_returns_422(): void
     {
         UserModel::factory()->create(['email' => 'ana@example.com']);
-        $this->issueAndCaptureOtpCode('ana@example.com', '/api/v1/auth/password/forgot');
+        $this->postJson('/api/v1/auth/password/forgot', ['email' => 'ana@example.com']);
 
         $response = $this->postJson('/api/v1/auth/password/verify-code', [
             'email' => 'ana@example.com',
-            'code' => '000000',
+            'code' => '999999',
         ]);
 
         $response->assertStatus(422)->assertJsonPath('message', 'Código inválido ou expirado.');
-    }
-
-    private function issueAndCaptureOtpCode(string $email, ?string $issueRoute = null): string
-    {
-        Notification::fake();
-
-        if ($issueRoute !== null) {
-            $this->postJson($issueRoute, ['email' => $email]);
-        }
-
-        $code = null;
-        Notification::assertSentOnDemand(
-            OtpCodeNotification::class,
-            function (OtpCodeNotification $notification) use (&$code): bool {
-                $code = $notification->getCode();
-
-                return true;
-            },
-        );
-
-        Notification::fake(); // stop faking so the next real request re-issues cleanly if needed
-
-        /** @var string $code */
-        return $code;
     }
 }

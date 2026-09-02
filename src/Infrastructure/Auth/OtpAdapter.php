@@ -67,7 +67,7 @@ class OtpAdapter implements OtpVerificationPort
         /** @var int $ttlMinutes */
         $ttlMinutes = config('qor.auth.otp_ttl_minutes');
 
-        $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+        $code = $this->generateCode($length);
 
         // Atomic upsert (relies on the (purpose, identifier) unique index) —
         // a plain delete()-then-create() lets two concurrent issues both
@@ -87,6 +87,32 @@ class OtpAdapter implements OtpVerificationPort
         );
 
         Notification::route('mail', $identifier)->notify(new OtpCodeNotification($code, $purpose));
+    }
+
+    /**
+     * In local/testing, every issued code is a fixed, well-known value
+     * (config('qor.auth.otp_fixed_test_code')) instead of a random one —
+     * this is what lets qor-website's E2E suite drive a real signup/
+     * password-reset flow through OTP verification without ever needing to
+     * exfiltrate a real secret over HTTP (an earlier version of this
+     * feature tried a debug endpoint returning the plaintext code; a
+     * review flagged that as network-reachable and unauthenticated in any
+     * environment where APP_ENV=testing is reachable at all, with no
+     * defense-in-depth beyond a single env-string check — this approach
+     * has no such endpoint and no such attack surface). Every other code
+     * path (hashing, attempt-limiting, expiry, consume()) still runs
+     * exactly as in production against this fixed value.
+     */
+    private function generateCode(int $length): string
+    {
+        if (app()->environment(['local', 'testing'])) {
+            /** @var string $fixedCode */
+            $fixedCode = config('qor.auth.otp_fixed_test_code');
+
+            return str_pad($fixedCode, $length, '0', STR_PAD_LEFT);
+        }
+
+        return str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
     }
 
     private function consume(string $purpose, string $identifier, string $code): bool

@@ -37,6 +37,8 @@ return [
         'otp_length' => (int) env('QOR_OTP_LENGTH', 6),
         'otp_ttl_minutes' => (int) env('QOR_OTP_TTL_MINUTES', 10),
         'otp_max_attempts' => (int) env('QOR_OTP_MAX_ATTEMPTS', 5),
+        // local/testing only — see OtpAdapter::generateCode()'s docblock.
+        'otp_fixed_test_code' => (string) env('QOR_OTP_FIXED_TEST_CODE', '000000'),
     ],
 
     /*
