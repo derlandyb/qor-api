@@ -37,7 +37,10 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    // This project has no generic 'web' guard (config/auth.php) — 'fan'
+    // and 'admin' are distinct Sanctum guards, each needing its own real
+    // session-backed guard for the stateful check to authenticate against.
+    'guard' => ['admin-session', 'fan-session'],
 
     /*
     |--------------------------------------------------------------------------

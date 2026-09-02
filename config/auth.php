@@ -50,6 +50,24 @@ return [
             'driver' => 'sanctum',
             'provider' => 'admins',
         ],
+
+        // Real session-backed guards Sanctum's stateful SPA check actually
+        // authenticates against (config/sanctum.php's 'guard' list) — the
+        // 'fan'/'admin' guards above are per-request Sanctum guards that,
+        // for a stateful (cookie) request, delegate to whichever of these
+        // has a logged-in session; a login endpoint calls these directly
+        // (e.g. AdminAuthController::login() -> Auth::guard('admin-session')
+        // ->login($model)). Without a project-specific pair here, Sanctum
+        // silently falls back to its own generic 'web'/'users' defaults,
+        // which point at the stock (nonexistent in this app) App\Models\User.
+        'fan-session' => [
+            'driver' => 'session',
+            'provider' => 'fans',
+        ],
+        'admin-session' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
     ],
 
     /*

@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use QOR\App\Domain\Billing\Exception\QuotaExceeded;
 use QOR\App\Http\Middleware\EnsureAdminIdentity;
 use QOR\App\Http\Middleware\EnsureFanIdentity;
@@ -31,6 +32,18 @@ $app = Application::configure(basePath: dirname(__DIR__))
     // before useAppPath() runs) must be given explicitly here.
     ->withCommands([__DIR__.'/../src/Console/Commands'])
     ->withMiddleware(function (Middleware $middleware) {
+        // Sanctum SPA cookie mode (ARCHITECTURE §2 — website/admin/landing)
+        // needs this on every route that authenticates via a cookie, not
+        // just a bearer token. `routes/api_v1.php`/`api_admin_v1.php` are
+        // registered manually via Route::middleware('api') in this file's
+        // `then` callback rather than withRouting()'s `api:` shorthand, so
+        // Laravel's usual auto-wiring of this middleware for Sanctum never
+        // ran — every 'api'-group request was stateless-only until now,
+        // meaning a session-cookie login never actually authenticated a
+        // subsequent request in a real browser (only the bearer `token`
+        // ever worked, which qor-admin's client deliberately never uses).
+        $middleware->api(prepend: [EnsureFrontendRequestsAreStateful::class]);
+
         $middleware->alias([
             'guard.fan' => EnsureFanIdentity::class,
             'guard.admin' => EnsureAdminIdentity::class,
