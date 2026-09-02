@@ -34,6 +34,9 @@ return [
         ],
         'password_reset_ttl_minutes' => (int) env('QOR_PASSWORD_RESET_TTL_MINUTES', 60),
         'email_verification_ttl_minutes' => (int) env('QOR_EMAIL_VERIFICATION_TTL_MINUTES', 60),
+        'otp_length' => (int) env('QOR_OTP_LENGTH', 6),
+        'otp_ttl_minutes' => (int) env('QOR_OTP_TTL_MINUTES', 10),
+        'otp_max_attempts' => (int) env('QOR_OTP_MAX_ATTEMPTS', 5),
     ],
 
     /*

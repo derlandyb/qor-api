@@ -37,6 +37,7 @@ use QOR\App\Domain\Social\FavoriteRepository;
 use QOR\App\Domain\Social\FriendshipRepository;
 use QOR\App\Domain\User\ConsentRepository;
 use QOR\App\Domain\User\EmailVerificationPort;
+use QOR\App\Domain\User\OtpVerificationPort;
 use QOR\App\Domain\User\PasswordPolicy;
 use QOR\App\Domain\User\PasswordResetPort;
 use QOR\App\Domain\User\UserAddressRepository;
@@ -45,6 +46,7 @@ use QOR\App\Domain\User\UserRepository;
 use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Infrastructure\Auth\LaravelEmailVerificationAdapter;
 use QOR\App\Infrastructure\Auth\LaravelPasswordResetAdapter;
+use QOR\App\Infrastructure\Auth\OtpAdapter;
 use QOR\App\Infrastructure\Events\LaravelDomainEventPublisher;
 use QOR\App\Infrastructure\Notification\FcmPushSender;
 use QOR\App\Infrastructure\Notification\SesEmailSender;
@@ -94,6 +96,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
         $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
         $this->app->bind(PasswordResetPort::class, LaravelPasswordResetAdapter::class);
+        $this->app->bind(OtpVerificationPort::class, OtpAdapter::class);
         $this->app->bind(TransactionManager::class, LaravelTransactionManager::class);
 
         $this->app->singleton(PasswordPolicy::class, function () {

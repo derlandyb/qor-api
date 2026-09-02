@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use QOR\App\Domain\User\EmailVerificationPort;
 use QOR\App\Domain\User\Exception\InvalidCredentials;
 use QOR\App\Domain\User\Exception\UnverifiedAccount;
+use QOR\App\Domain\User\OtpVerificationPort;
 use QOR\App\Domain\User\User;
 use QOR\App\Domain\User\UseCase\AuthenticateFan;
 use QOR\App\Domain\User\UseCase\RegisterFan;
@@ -20,6 +21,8 @@ use QOR\App\Http\Requests\Api\V1\Auth\LoginRequest;
 use QOR\App\Http\Requests\Api\V1\Auth\RegisterFanRequest;
 use QOR\App\Http\Requests\Api\V1\Auth\ResendVerificationRequest;
 use QOR\App\Http\Requests\Api\V1\Auth\ResetPasswordConfirmRequest;
+use QOR\App\Http\Requests\Api\V1\Auth\VerifyEmailCodeRequest;
+use QOR\App\Http\Requests\Api\V1\Auth\VerifyPasswordResetCodeRequest;
 use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
 
 class AuthController extends Controller
@@ -29,6 +32,7 @@ class AuthController extends Controller
         private readonly AuthenticateFan $authenticateFan,
         private readonly ResetPassword $resetPassword,
         private readonly EmailVerificationPort $emailVerification,
+        private readonly OtpVerificationPort $otpVerification,
         private readonly UserRepository $users,
     ) {
     }
@@ -97,7 +101,7 @@ class AuthController extends Controller
     {
         $this->resetPassword->requestReset($this->field($request, 'email'));
 
-        return response()->json(['message' => 'Se este e-mail existir, você receberá um link.']);
+        return response()->json(['message' => 'Se este e-mail existir, você receberá um código.']);
     }
 
     public function resetPasswordConfirm(ResetPasswordConfirmRequest $request): JsonResponse
@@ -122,15 +126,37 @@ class AuthController extends Controller
 
     public function resendVerification(ResendVerificationRequest $request): JsonResponse
     {
-        $user = $this->users->findByEmail($this->field($request, 'email'));
-
-        if ($user !== null) {
-            $this->emailVerification->send((int) $user->id);
-        }
+        $this->otpVerification->issueEmailVerificationCode($this->field($request, 'email'));
 
         return response()->json([
-            'message' => 'Se este e-mail existir e ainda não tiver sido verificado, você receberá um novo link.',
+            'message' => 'Se este e-mail existir e ainda não tiver sido verificado, você receberá um novo código.',
         ]);
+    }
+
+    public function verifyEmailCode(VerifyEmailCodeRequest $request): JsonResponse
+    {
+        $verified = $this->otpVerification->verifyEmailCode(
+            $this->field($request, 'email'),
+            $this->field($request, 'code'),
+        );
+
+        if (! $verified) {
+            return response()->json(['message' => 'Código inválido ou expirado.'], 422);
+        }
+
+        $user = $this->users->findByEmail($this->field($request, 'email'));
+
+        return response()->json(['data' => $user !== null ? $this->userToArray($user) : null]);
+    }
+
+    public function verifyPasswordResetCode(VerifyPasswordResetCodeRequest $request): JsonResponse
+    {
+        $token = $this->resetPassword->verifyResetCode(
+            $this->field($request, 'email'),
+            $this->field($request, 'code'),
+        );
+
+        return response()->json(['data' => ['token' => $token]]);
     }
 
     public function confirmPendingEmail(int $id, string $hash): JsonResponse

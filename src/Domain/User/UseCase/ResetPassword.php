@@ -4,6 +4,7 @@ namespace QOR\App\Domain\User\UseCase;
 
 use InvalidArgumentException;
 use QOR\App\Domain\Shared\PasswordHasher;
+use QOR\App\Domain\User\OtpVerificationPort;
 use QOR\App\Domain\User\PasswordPolicy;
 use QOR\App\Domain\User\PasswordResetPort;
 
@@ -11,6 +12,7 @@ final class ResetPassword
 {
     public function __construct(
         private readonly PasswordResetPort $passwordReset,
+        private readonly OtpVerificationPort $otpVerification,
         private readonly PasswordHasher $passwordHasher,
         private readonly PasswordPolicy $passwordPolicy,
     ) {
@@ -23,7 +25,22 @@ final class ResetPassword
      */
     public function requestReset(string $email): void
     {
-        $this->passwordReset->sendResetLink($email);
+        $this->otpVerification->issuePasswordResetCode($email);
+    }
+
+    /**
+     * Verifies the OTP code and returns a real password-reset token, ready
+     * to hand straight to confirmReset() — the confirm step is unchanged.
+     */
+    public function verifyResetCode(string $email, string $code): string
+    {
+        $token = $this->otpVerification->verifyPasswordResetCode($email, $code);
+
+        if ($token === null) {
+            throw new InvalidArgumentException('Código inválido ou expirado.');
+        }
+
+        return $token;
     }
 
     public function confirmReset(string $email, string $token, string $newPassword): void
