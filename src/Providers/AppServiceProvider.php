@@ -188,6 +188,20 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($limit)->by($request->ip());
         });
 
+        // Separate from qor-auth (IP-keyed): an OTP attack targets one
+        // victim's *identifier* from many IPs, which an IP-keyed limiter
+        // alone can't bound — this closes that gap for the 4 OTP-issuing/
+        // verifying endpoints (see OtpAdapter's per-code attempt lockout,
+        // which this limiter backs up at the request layer).
+        RateLimiter::for('qor-otp', function (Request $request) {
+            /** @var int $limit */
+            $limit = config('qor.rate_limits.otp');
+            /** @var string $email */
+            $email = $request->input('email', '');
+
+            return Limit::perMinute($limit)->by('otp:'.$email);
+        });
+
         // The reset link opens a client-app screen (mobile deep link / web
         // route — not built yet, no submodule feature work has started per
         // STATE.md) that then POSTs to /api/v1/auth/password/reset with the

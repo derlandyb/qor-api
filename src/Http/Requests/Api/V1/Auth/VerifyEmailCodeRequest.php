@@ -16,9 +16,12 @@ class VerifyEmailCodeRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var int $otpLength */
+        $otpLength = config('qor.auth.otp_length');
+
         return [
             'email' => ['required', 'email'],
-            'code' => ['required', 'string'],
+            'code' => ['required', 'digits:'.$otpLength],
         ];
     }
 
@@ -31,6 +34,7 @@ class VerifyEmailCodeRequest extends FormRequest
             'email.required' => 'O e-mail é obrigatório.',
             'email.email' => 'E-mail inválido.',
             'code.required' => 'O código é obrigatório.',
+            'code.digits' => 'Código inválido.',
         ];
     }
 }

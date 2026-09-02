@@ -17,7 +17,10 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->timestamps();
 
-            $table->index(['purpose', 'identifier']);
+            // Unique (not just indexed) — issue() upserts on this pair, and
+            // it rules out ever having two live codes for the same purpose
+            // + identifier (see OtpAdapter's review-fixed race condition).
+            $table->unique(['purpose', 'identifier']);
         });
     }
 

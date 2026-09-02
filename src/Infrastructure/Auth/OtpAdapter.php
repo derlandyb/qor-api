@@ -2,6 +2,7 @@
 
 namespace QOR\App\Infrastructure\Auth;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use QOR\App\Domain\User\OtpVerificationPort;
@@ -68,15 +69,22 @@ class OtpAdapter implements OtpVerificationPort
 
         $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
 
-        OtpCodeModel::where('purpose', $purpose)->where('identifier', $identifier)->delete();
-
-        OtpCodeModel::create([
-            'purpose' => $purpose,
-            'identifier' => $identifier,
-            'code_hash' => hash('sha256', $code),
-            'attempts' => 0,
-            'expires_at' => now()->addMinutes($ttlMinutes),
-        ]);
+        // Atomic upsert (relies on the (purpose, identifier) unique index) —
+        // a plain delete()-then-create() lets two concurrent issues both
+        // pass the delete and leave two live rows for the same identifier.
+        OtpCodeModel::query()->upsert(
+            [[
+                'purpose' => $purpose,
+                'identifier' => $identifier,
+                'code_hash' => hash('sha256', $code),
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes($ttlMinutes),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]],
+            ['purpose', 'identifier'],
+            ['code_hash', 'attempts', 'expires_at', 'updated_at'],
+        );
 
         Notification::route('mail', $identifier)->notify(new OtpCodeNotification($code, $purpose));
     }
@@ -86,20 +94,29 @@ class OtpAdapter implements OtpVerificationPort
         /** @var int $maxAttempts */
         $maxAttempts = config('qor.auth.otp_max_attempts');
 
-        $row = OtpCodeModel::where('purpose', $purpose)->where('identifier', $identifier)->first();
+        return DB::transaction(function () use ($purpose, $identifier, $code, $maxAttempts): bool {
+            // lockForUpdate() serializes concurrent verify attempts against
+            // the same row, so the attempt-limit check above can't be raced
+            // by firing guesses in parallel (each waits for the prior
+            // transaction's increment to commit before reading attempts).
+            $row = OtpCodeModel::where('purpose', $purpose)
+                ->where('identifier', $identifier)
+                ->lockForUpdate()
+                ->first();
 
-        if ($row === null || $row->expires_at->isPast() || $row->attempts >= $maxAttempts) {
-            return false;
-        }
+            if ($row === null || $row->expires_at->isPast() || $row->attempts >= $maxAttempts) {
+                return false;
+            }
 
-        if (! hash_equals($row->code_hash, hash('sha256', $code))) {
-            $row->increment('attempts');
+            if (! hash_equals($row->code_hash, hash('sha256', $code))) {
+                $row->increment('attempts');
 
-            return false;
-        }
+                return false;
+            }
 
-        $row->delete();
+            $row->delete();
 
-        return true;
+            return true;
+        });
     }
 }

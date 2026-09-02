@@ -85,6 +85,7 @@ return [
     'rate_limits' => [
         'auth' => (int) env('QOR_RATE_LIMIT_AUTH', 5),
         'public_api' => (int) env('QOR_RATE_LIMIT_PUBLIC_API', 60),
+        'otp' => (int) env('QOR_RATE_LIMIT_OTP', 5),
     ],
 
     /*

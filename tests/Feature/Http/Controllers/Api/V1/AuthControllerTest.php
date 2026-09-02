@@ -248,6 +248,26 @@ class AuthControllerTest extends TestCase
         $this->assertSame(5, $row->attempts);
     }
 
+    public function test_GIVEN_an_expired_otp_code_WHEN_verifying_email_THEN_it_returns_422(): void
+    {
+        $user = UserModel::factory()->unverified()->create(['email' => 'ana@example.com']);
+        OtpCodeModel::create([
+            'purpose' => 'email_verification',
+            'identifier' => 'ana@example.com',
+            'code_hash' => hash('sha256', '123456'),
+            'attempts' => 0,
+            'expires_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/email/verify-code', [
+            'email' => 'ana@example.com',
+            'code' => '123456',
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('message', 'Código inválido ou expirado.');
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
     public function test_GIVEN_a_registered_email_WHEN_requesting_a_password_reset_code_and_verifying_it_THEN_it_returns_a_usable_reset_token(): void
     {
         UserModel::factory()->create(['email' => 'ana@example.com']);
