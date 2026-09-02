@@ -57,7 +57,10 @@ class OtpAdapter implements OtpVerificationPort
             return null;
         }
 
-        return Password::broker('fans')->createToken($user);
+        /** @var \Illuminate\Auth\Passwords\PasswordBroker $broker */
+        $broker = Password::broker('fans');
+
+        return $broker->createToken($user);
     }
 
     private function issue(string $purpose, string $identifier): void

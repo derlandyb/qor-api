@@ -10,9 +10,9 @@ use PHPUnit\Framework\TestCase;
 use QOR\App\Domain\Shared\PasswordHasher;
 use QOR\App\Domain\User\ConsentRecord;
 use QOR\App\Domain\User\ConsentRepository;
-use QOR\App\Domain\User\EmailVerificationPort;
 use QOR\App\Domain\User\Enum\ConsentableType;
 use QOR\App\Domain\User\Enum\ConsentType;
+use QOR\App\Domain\User\OtpVerificationPort;
 use QOR\App\Domain\User\PasswordPolicy;
 use QOR\App\Domain\User\User;
 use QOR\App\Domain\User\UseCase\RegisterFan;
@@ -27,14 +27,14 @@ class RegisterFanTest extends TestCase
         ?ConsentRepository $consent = null,
         ?PasswordHasher $passwordHasher = null,
         ?PasswordPolicy $passwordPolicy = null,
-        ?EmailVerificationPort $emailVerification = null,
+        ?OtpVerificationPort $otpVerification = null,
     ): RegisterFan {
         return new RegisterFan(
             $users,
             $consent ?? $this->passthroughConsent(),
             $passwordHasher ?? $this->passthroughHasher(),
             $passwordPolicy ?? new PasswordPolicy(minLength: 8, requireMixedCase: true, requireNumbers: true),
-            $emailVerification ?? $this->passthroughEmailVerification(),
+            $otpVerification ?? $this->passthroughOtpVerification(),
         );
     }
 
@@ -53,10 +53,10 @@ class RegisterFanTest extends TestCase
         return $consent;
     }
 
-    private function passthroughEmailVerification(): EmailVerificationPort
+    private function passthroughOtpVerification(): OtpVerificationPort
     {
-        $port = Mockery::mock(EmailVerificationPort::class);
-        $port->shouldReceive('send');
+        $port = Mockery::mock(OtpVerificationPort::class);
+        $port->shouldReceive('issueEmailVerificationCode');
 
         return $port;
     }
@@ -94,10 +94,10 @@ class RegisterFanTest extends TestCase
                 acceptedAt: new DateTimeImmutable(),
             ));
 
-        $emailVerification = Mockery::mock(EmailVerificationPort::class);
-        $emailVerification->shouldReceive('send')->once()->with(1);
+        $otpVerification = Mockery::mock(OtpVerificationPort::class);
+        $otpVerification->shouldReceive('issueEmailVerificationCode')->once()->with('ana@example.com');
 
-        $useCase = $this->makeUseCase($users, $consent, emailVerification: $emailVerification);
+        $useCase = $this->makeUseCase($users, $consent, otpVerification: $otpVerification);
 
         $saved = $useCase->execute(
             name: 'Ana Silva',
@@ -203,7 +203,7 @@ class RegisterFanTest extends TestCase
         $this->assertSame('27999999999', $saved->phone);
     }
 
-    public function test_GIVEN_registration_succeeds_WHEN_registering_THEN_the_verification_email_is_sent_for_the_new_user_id(): void
+    public function test_GIVEN_registration_succeeds_WHEN_registering_THEN_the_verification_code_is_issued_for_the_new_users_email(): void
     {
         $users = Mockery::mock(UserRepository::class);
         $users->shouldReceive('findByEmail')->once()->andReturnNull();
@@ -215,10 +215,10 @@ class RegisterFanTest extends TestCase
             passwordHash: $user->passwordHash,
         ));
 
-        $emailVerification = Mockery::mock(EmailVerificationPort::class);
-        $emailVerification->shouldReceive('send')->once()->with(7);
+        $otpVerification = Mockery::mock(OtpVerificationPort::class);
+        $otpVerification->shouldReceive('issueEmailVerificationCode')->once()->with('caio@example.com');
 
-        $this->makeUseCase($users, emailVerification: $emailVerification)->execute(
+        $this->makeUseCase($users, otpVerification: $otpVerification)->execute(
             name: 'Caio Souza',
             email: 'caio@example.com',
             password: 'Senha123',
