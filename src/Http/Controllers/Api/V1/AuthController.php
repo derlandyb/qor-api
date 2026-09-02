@@ -5,6 +5,8 @@ namespace QOR\App\Http\Controllers\Api\V1;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 use QOR\App\Domain\User\EmailVerificationPort;
 use QOR\App\Domain\User\Exception\InvalidCredentials;
 use QOR\App\Domain\User\Exception\UnverifiedAccount;
@@ -92,7 +94,25 @@ class AuthController extends Controller
         /** @var UserModel $user */
         $user = $request->user();
 
-        $user->currentAccessToken()->delete();
+        // A session-cookie request (the only credential qor-website's SPA
+        // actually presents) resolves currentAccessToken() to Sanctum's
+        // TransientToken, which has no delete() — only a genuine bearer-
+        // token request (mobile) has a real PersonalAccessToken row to
+        // revoke. HasApiTokens' PHPDoc claims this always returns
+        // PersonalAccessToken, which is wrong at runtime for a session
+        // request — hence the ignore.
+        $token = $user->currentAccessToken();
+        // @phpstan-ignore instanceof.alwaysTrue
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        Auth::guard('fan-session')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Sessão encerrada.']);
     }
@@ -190,6 +210,21 @@ class AuthController extends Controller
     private function sessionResponse(User $user): array
     {
         $model = UserModel::findOrFail($user->id);
+
+        // The actual credential qor-website's SPA uses (ARCHITECTURE §2 —
+        // cookie mode, never a client-held token): without this, every
+        // subsequent cookie-based request (GET /profile, favorites, ...) is
+        // unauthenticated in a real browser, even though login() itself
+        // reports success — the `token` below is only for mobile bearer
+        // clients.
+        //
+        // Sanctum's custom 'fan' guard (config/auth.php) is a stateless
+        // RequestGuard — it has no ->login(). config/sanctum.php's 'guard'
+        // list names the real session-backed guard(s) Sanctum actually
+        // checks for a stateful (cookie) request, regardless of which named
+        // guard a route declares — 'fan-session' here.
+        Auth::guard('fan-session')->login($model);
+
         $token = $model->createToken('mobile')->plainTextToken;
 
         return ['data' => $this->userToArray($user), 'token' => $token];
