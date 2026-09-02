@@ -8,11 +8,6 @@ use QOR\App\Infrastructure\Persistence\Eloquent\UserModel;
 
 class LaravelPasswordResetAdapter implements PasswordResetPort
 {
-    public function sendResetLink(string $email): void
-    {
-        Password::broker('fans')->sendResetLink(['email' => $email]);
-    }
-
     public function reset(string $email, string $token, string $newPasswordHash): bool
     {
         $status = Password::broker('fans')->reset(

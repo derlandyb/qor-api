@@ -6,9 +6,9 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use QOR\App\Domain\Shared\PasswordHasher;
 use QOR\App\Domain\User\ConsentRepository;
-use QOR\App\Domain\User\EmailVerificationPort;
 use QOR\App\Domain\User\Enum\ConsentableType;
 use QOR\App\Domain\User\Enum\ConsentType;
+use QOR\App\Domain\User\OtpVerificationPort;
 use QOR\App\Domain\User\PasswordPolicy;
 use QOR\App\Domain\User\User;
 use QOR\App\Domain\User\UserRepository;
@@ -20,7 +20,7 @@ final class RegisterFan
         private readonly ConsentRepository $consent,
         private readonly PasswordHasher $passwordHasher,
         private readonly PasswordPolicy $passwordPolicy,
-        private readonly EmailVerificationPort $emailVerification,
+        private readonly OtpVerificationPort $otpVerification,
     ) {
     }
 
@@ -55,7 +55,7 @@ final class RegisterFan
         ));
 
         $this->consent->record(ConsentableType::User, (int) $saved->id, ConsentType::Terms, $consentPolicyVersion);
-        $this->emailVerification->send((int) $saved->id);
+        $this->otpVerification->issueEmailVerificationCode($email);
 
         return $saved;
     }

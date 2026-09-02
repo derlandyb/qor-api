@@ -37,6 +37,7 @@ use QOR\App\Domain\Social\FavoriteRepository;
 use QOR\App\Domain\Social\FriendshipRepository;
 use QOR\App\Domain\User\ConsentRepository;
 use QOR\App\Domain\User\EmailVerificationPort;
+use QOR\App\Domain\User\OtpVerificationPort;
 use QOR\App\Domain\User\PasswordPolicy;
 use QOR\App\Domain\User\PasswordResetPort;
 use QOR\App\Domain\User\UserAddressRepository;
@@ -45,6 +46,7 @@ use QOR\App\Domain\User\UserRepository;
 use QOR\App\Domain\Venue\VenueRepository;
 use QOR\App\Infrastructure\Auth\LaravelEmailVerificationAdapter;
 use QOR\App\Infrastructure\Auth\LaravelPasswordResetAdapter;
+use QOR\App\Infrastructure\Auth\OtpAdapter;
 use QOR\App\Infrastructure\Events\LaravelDomainEventPublisher;
 use QOR\App\Infrastructure\Notification\FcmPushSender;
 use QOR\App\Infrastructure\Notification\SesEmailSender;
@@ -94,6 +96,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PasswordHasher::class, LaravelPasswordHasher::class);
         $this->app->bind(EmailVerificationPort::class, LaravelEmailVerificationAdapter::class);
         $this->app->bind(PasswordResetPort::class, LaravelPasswordResetAdapter::class);
+        $this->app->bind(OtpVerificationPort::class, OtpAdapter::class);
         $this->app->bind(TransactionManager::class, LaravelTransactionManager::class);
 
         $this->app->singleton(PasswordPolicy::class, function () {
@@ -183,6 +186,20 @@ class AppServiceProvider extends ServiceProvider
             $limit = config('qor.rate_limits.auth');
 
             return Limit::perMinute($limit)->by($request->ip());
+        });
+
+        // Separate from qor-auth (IP-keyed): an OTP attack targets one
+        // victim's *identifier* from many IPs, which an IP-keyed limiter
+        // alone can't bound — this closes that gap for the 4 OTP-issuing/
+        // verifying endpoints (see OtpAdapter's per-code attempt lockout,
+        // which this limiter backs up at the request layer).
+        RateLimiter::for('qor-otp', function (Request $request) {
+            /** @var int $limit */
+            $limit = config('qor.rate_limits.otp');
+            /** @var string $email */
+            $email = $request->input('email', '');
+
+            return Limit::perMinute($limit)->by('otp:'.$email);
         });
 
         // The reset link opens a client-app screen (mobile deep link / web
