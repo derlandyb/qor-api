@@ -121,6 +121,24 @@ class AdminAuthControllerTest extends TestCase
             ->assertJsonMissingPath('data.is_super_admin');
     }
 
+    public function test_GIVEN_correct_credentials_WHEN_logging_in_THEN_the_admin_guard_session_is_authenticated(): void
+    {
+        // ARCHITECTURE.md §2 — qor-admin is Sanctum SPA cookie mode, not
+        // bearer tokens; the `token` field in the response is a vestigial
+        // field the client deliberately never reads (lib/api/client.ts's
+        // login() docblock). Login must therefore leave the *session*
+        // itself authenticated for the admin guard, not just return a
+        // token nobody uses — this is what makes every subsequent
+        // cookie-based request (GET /me, the approval queues, ...) work in
+        // a real browser.
+        $admin = $this->venueAdmin('sessao@example.com', ApprovalStatus::Approved);
+
+        $this->postJson('/api/admin/v1/auth/login', ['email' => 'sessao@example.com', 'password' => 'Senha123'])
+            ->assertStatus(200);
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+    }
+
     public function test_GIVEN_an_authenticated_super_admin_WHEN_getting_me_THEN_the_response_reports_account_type_super_admin(): void
     {
         $admin = AdminUserModel::factory()->create(['is_super_admin' => true]);
