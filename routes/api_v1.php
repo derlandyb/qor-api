@@ -12,7 +12,6 @@
 
 use Illuminate\Support\Facades\Route;
 use QOR\App\Http\Controllers\Api\V1\AuthController;
-use QOR\App\Http\Controllers\Api\V1\DebugController;
 use QOR\App\Http\Controllers\Api\V1\EventController;
 use QOR\App\Http\Controllers\Api\V1\FavoriteController;
 use QOR\App\Http\Controllers\Api\V1\FriendshipController;
@@ -82,9 +81,3 @@ Route::prefix('friends')->middleware(['auth:fan', 'guard.fan'])->group(function 
     Route::delete('/{userId}', [FriendshipController::class, 'destroy'])->whereNumber('userId');
     Route::get('/', [FriendshipController::class, 'index']);
 });
-
-// Local/testing-only — this route simply doesn't exist in any other
-// environment (not just 404'd at runtime). See DebugController's docblock.
-if (app()->environment(['local', 'testing'])) {
-    Route::get('/_debug/otp', [DebugController::class, 'lastOtpCode']);
-}
