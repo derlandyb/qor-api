@@ -65,6 +65,7 @@ class EventSeeder extends Seeder
                     'is_free' => $isFree,
                     'ticket_url' => $isFree ? null : 'https://ingressos.example.com/evento-'.($i + 1),
                     'cover_image_url' => self::GENRE_IMAGES[$genre->slug] ?? self::GENRE_IMAGES['rock'],
+                    'address' => fake()->address(),
                 ]);
 
                 $i++;
