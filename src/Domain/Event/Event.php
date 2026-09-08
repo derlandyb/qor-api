@@ -31,6 +31,12 @@ final class Event
         public readonly int $genreId,
         public readonly bool $isFree,
         public readonly EventStatus $status = EventStatus::Draft,
+        /**
+         * Denormalized genre display name, resolved by repository read paths via the
+         * eager-loaded `genres` relation. Null when constructed pre-persistence by use
+         * cases, which only know `genreId` (the domain source of truth per ARCHITECTURE §14).
+         */
+        public readonly ?string $genreName = null,
         public readonly ?string $coverImageUrl = null,
         public readonly ?string $address = null,
         public readonly ?string $ticketUrl = null,
@@ -74,6 +80,7 @@ final class Event
             genreId: $this->genreId,
             isFree: $this->isFree,
             status: $newStatus,
+            genreName: $this->genreName,
             address: $this->address,
             ticketUrl: $this->ticketUrl,
             capacity: $this->capacity,
