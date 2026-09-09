@@ -93,6 +93,24 @@ class AuthControllerTest extends TestCase
         $this->assertAuthenticated('fan-session');
     }
 
+    public function test_GIVEN_a_request_from_the_websites_docker_origin_WHEN_logging_in_THEN_it_sets_a_session_cookie(): void
+    {
+        // Regression guard: the website container is published on host
+        // port 3002 (docker-compose.yml's `website` service), the same
+        // stateful-domain gap fixed for the admin panel's localhost:3001
+        // (see AdminAuthControllerTest) — without it in
+        // SANCTUM_STATEFUL_DOMAINS, a real browser hitting localhost:3002
+        // never gets a stateful session cookie at login.
+        UserModel::factory()->create(['email' => 'website-cookie-check@example.com', 'password_hash' => Hash::make('Senha123')]);
+
+        $response = $this->withHeader('Origin', 'http://localhost:3002')
+            ->postJson('/api/v1/auth/login', ['email' => 'website-cookie-check@example.com', 'password' => 'Senha123']);
+
+        $response->assertStatus(200);
+        $response->assertCookie(config('session.cookie'));
+        $this->assertAuthenticated('fan-session');
+    }
+
     public function test_GIVEN_the_wrong_password_WHEN_logging_in_THEN_it_returns_401_with_a_generic_message(): void
     {
         UserModel::factory()->create(['email' => 'ana@example.com', 'password_hash' => Hash::make('Senha123')]);
