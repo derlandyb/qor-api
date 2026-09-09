@@ -630,6 +630,72 @@
             "description": "DISC-07/DISC-08/DISC-09/DISC-10/DISC-11/DISC-13 — full event detail including tagged promoters. Public, no token needed. `id` must be a valid seeded event id (e.g. from `php artisan db:seed`, or from a prior List Upcoming Events response)."
           },
           "response": []
+        },
+        {
+          "name": "Get Map Events (Bounding Box)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/events/map?north=-20.0&south=-21.0&east=-40.0&west=-41.0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "events",
+                "map"
+              ],
+              "query": [
+                {
+                  "key": "north",
+                  "value": "-20.0"
+                },
+                {
+                  "key": "south",
+                  "value": "-21.0"
+                },
+                {
+                  "key": "east",
+                  "value": "-40.0"
+                },
+                {
+                  "key": "west",
+                  "value": "-41.0"
+                }
+              ]
+            },
+            "description": "MAPGEO-03/MAPGEO-04 — geocoded published events within the given bounding box (north/south/east/west), each with latitude/longitude plus the existing public event summary fields. Public, no token needed. Exactly a full box or a city is required (see the sibling city-mode request) — missing both, or a partial box, returns 422 with the standard pt-BR error envelope. Sample 200 response:\n\n```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Noite de Rock\",\n      \"starts_at\": \"2026-10-01T22:00:00+00:00\",\n      \"city\": \"vitoria\",\n      \"genre\": \"Rock\",\n      \"address\": \"Rua das Flores, 123\",\n      \"latitude\": -20.3155,\n      \"longitude\": -40.3128,\n      \"is_free\": true,\n      \"status\": \"published\"\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Map Events (City)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/events/map?city=vitoria",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "events",
+                "map"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "vitoria"
+                }
+              ]
+            },
+            "description": "MAPGEO-03 — geocoded published events within `qor.map.city_radius_km` of the given city's fixed center point, as a convenience alternative to an explicit bounding box. Public, no token needed. Sample 200 response is the same shape as the bounding-box request; an area/city with no geocoded events returns `{\"data\": []}`, not an error."
+          },
+          "response": []
         }
       ]
     },
@@ -2156,4 +2222,3 @@
     }
   ]
 }
-
