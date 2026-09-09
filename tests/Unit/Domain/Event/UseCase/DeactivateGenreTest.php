@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Domain\Event\UseCase;
 
+use InvalidArgumentException;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
@@ -29,5 +30,18 @@ class DeactivateGenreTest extends TestCase
         $result = $useCase->execute(1);
 
         $this->assertFalse($result->isActive);
+    }
+
+    public function test_GIVEN_a_non_existent_genre_WHEN_deactivating_THEN_it_throws_invalid_argument_exception(): void
+    {
+        $repository = Mockery::mock(GenreRepository::class);
+        $repository->shouldReceive('findById')->once()->with(999)->andReturn(null);
+
+        $useCase = new DeactivateGenre($repository);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Gênero não encontrado.');
+
+        $useCase->execute(999);
     }
 }

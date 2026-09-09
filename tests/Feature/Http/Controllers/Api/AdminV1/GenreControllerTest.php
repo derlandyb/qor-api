@@ -104,6 +104,24 @@ class GenreControllerTest extends TestCase
         $response->assertStatus(200)->assertJsonPath('data.is_active', true);
     }
 
+    public function test_GIVEN_a_non_existent_genre_id_WHEN_a_super_admin_activates_it_THEN_it_returns_422(): void
+    {
+        $this->actingAsSuperAdmin();
+
+        $response = $this->postJson('/api/admin/v1/genres/999999/activate');
+
+        $response->assertStatus(422);
+    }
+
+    public function test_GIVEN_a_non_existent_genre_id_WHEN_a_super_admin_deactivates_it_THEN_it_returns_422(): void
+    {
+        $this->actingAsSuperAdmin();
+
+        $response = $this->postJson('/api/admin/v1/genres/999999/deactivate');
+
+        $response->assertStatus(422);
+    }
+
     public function test_GIVEN_a_non_super_admin_admin_user_WHEN_listing_genres_THEN_it_succeeds(): void
     {
         $this->actingAsNonSuperAdmin();
