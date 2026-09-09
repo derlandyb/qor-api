@@ -30,7 +30,7 @@ class CreateEventRequest extends FormRequest
             'city' => ['required', Rule::enum(City::class)],
             'genre_id' => ['required', 'integer', 'exists:genres,id'],
             'is_free' => ['required', 'boolean'],
-            'address' => ['nullable', 'string', 'max:500'],
+            'address' => ['filled', 'string', 'max:500'],
             'ticket_url' => [Rule::requiredIf(fn () => ! $this->boolean('is_free')), 'nullable', 'url'],
             'capacity' => ['nullable', 'integer'],
             'age_rating' => ['nullable', 'string'],
