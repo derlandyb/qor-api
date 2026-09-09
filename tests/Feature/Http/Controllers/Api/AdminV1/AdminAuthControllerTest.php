@@ -116,6 +116,22 @@ class AdminAuthControllerTest extends TestCase
         $response->assertCookie(config('session.cookie'));
     }
 
+    public function test_GIVEN_a_request_from_the_admin_panels_docker_origin_WHEN_logging_in_THEN_it_sets_a_session_cookie(): void
+    {
+        // Regression guard: the admin container is published on host port
+        // 3001 (docker-compose.yml's `admin` service), but Sanctum's
+        // stateful-domain default only whitelists localhost:3000, so a real
+        // browser hitting localhost:3001 never got a stateful session — no
+        // cookie was set at login, so the subsequent /me call 401'd.
+        $admin = $this->venueAdmin('docker-origin@example.com', ApprovalStatus::Approved);
+
+        $response = $this->withHeader('Origin', 'http://localhost:3001')
+            ->postJson('/api/admin/v1/auth/login', ['email' => 'docker-origin@example.com', 'password' => 'Senha123']);
+
+        $response->assertStatus(200);
+        $response->assertCookie(config('session.cookie'));
+    }
+
     public function test_GIVEN_a_fan_token_WHEN_calling_an_admin_guarded_route_THEN_it_is_rejected(): void
     {
         $fan = UserModel::factory()->create();
