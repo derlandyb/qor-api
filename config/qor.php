@@ -92,6 +92,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Geocoding (nightlife-gv-stitch-refresh — Mapa Interativo, MAPGEO-01/02)
+    |--------------------------------------------------------------------------
+    */
+    'geocoding' => [
+        'google' => [
+            'api_key' => env('QOR_GOOGLE_GEOCODING_API_KEY'),
+            'endpoint' => env('QOR_GOOGLE_GEOCODING_ENDPOINT', 'https://maps.googleapis.com/maps/api/geocode/json'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media uploads (ARCHITECTURE.md §10)
     |--------------------------------------------------------------------------
     */
