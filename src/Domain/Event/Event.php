@@ -29,14 +29,16 @@ final class Event
         public readonly DateTimeImmutable $startsAt,
         public readonly City $city,
         public readonly int $genreId,
+        /**
+         * Denormalized genre display name. `genreId` remains the domain source of
+         * truth (ARCHITECTURE §14) — this is resolved via GenreRepository at every
+         * construction site (use cases resolve it explicitly; repository read paths
+         * resolve it via the eager-loaded `genres` relation) so it's never stale or
+         * missing on a real Event instance.
+         */
+        public readonly string $genreName,
         public readonly bool $isFree,
         public readonly EventStatus $status = EventStatus::Draft,
-        /**
-         * Denormalized genre display name, resolved by repository read paths via the
-         * eager-loaded `genres` relation. Null when constructed pre-persistence by use
-         * cases, which only know `genreId` (the domain source of truth per ARCHITECTURE §14).
-         */
-        public readonly ?string $genreName = null,
         public readonly ?string $coverImageUrl = null,
         public readonly ?string $address = null,
         public readonly ?string $ticketUrl = null,

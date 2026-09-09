@@ -13,7 +13,7 @@ use QOR\App\Domain\Shared\Enum\City;
 
 class EventTest extends TestCase
 {
-    private function makeEvent(bool $isFree = true, ?string $ticketUrl = null, ?string $genreName = null): Event
+    private function makeEvent(bool $isFree = true, ?string $ticketUrl = null, string $genreName = 'Rock'): Event
     {
         return new Event(
             id: 1,
@@ -31,12 +31,12 @@ class EventTest extends TestCase
         );
     }
 
-    public function test_GIVEN_no_genre_name_WHEN_constructing_THEN_it_defaults_to_null(): void
+    public function test_GIVEN_a_genre_id_and_name_WHEN_constructing_THEN_both_are_stored(): void
     {
-        $event = $this->makeEvent();
+        $event = $this->makeEvent(genreName: 'Rock');
 
         $this->assertSame(1, $event->genreId);
-        $this->assertNull($event->genreName);
+        $this->assertSame('Rock', $event->genreName);
     }
 
     public function test_GIVEN_a_resolved_genre_name_WHEN_transitioning_THEN_the_genre_name_is_carried_over(): void

@@ -180,6 +180,7 @@ final class DetectNearbyRemindersTest extends TestCase
             startsAt: $startsAt,
             city: City::Vitoria,
             genreId: 1,
+            genreName: 'Rock',
             isFree: true,
         );
     }

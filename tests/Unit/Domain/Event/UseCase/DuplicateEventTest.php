@@ -46,6 +46,7 @@ class DuplicateEventTest extends TestCase
             startsAt: new DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: 2,
+            genreName: 'Samba',
             isFree: true,
             status: $status,
             rejectionFeedback: 'Feedback anterior.',
@@ -78,6 +79,7 @@ class DuplicateEventTest extends TestCase
                 startsAt: $e->startsAt,
                 city: $e->city,
                 genreId: $e->genreId,
+                genreName: $e->genreName,
                 isFree: $e->isFree,
                 status: $e->status,
             ));

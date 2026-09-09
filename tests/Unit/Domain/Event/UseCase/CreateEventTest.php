@@ -11,6 +11,7 @@ use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\GenreRepository;
 use QOR\App\Domain\Event\UseCase\CreateEvent;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
@@ -38,6 +39,14 @@ class CreateEventTest extends TestCase
         );
     }
 
+    private function genres(): GenreRepository
+    {
+        $genres = Mockery::mock(GenreRepository::class);
+        $genres->shouldReceive('findNameById')->andReturn('Rock');
+
+        return $genres;
+    }
+
     private function approvedPromoter(): Promoter
     {
         return new Promoter(
@@ -48,6 +57,38 @@ class CreateEventTest extends TestCase
             contactEmail: 'contato@produtora.com',
             approvalStatus: ApprovalStatus::Approved,
         );
+    }
+
+    public function test_GIVEN_a_genre_id_WHEN_creating_an_event_THEN_its_name_is_resolved_via_the_genre_repository(): void
+    {
+        $venue = $this->approvedVenue();
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('save')
+            ->once()
+            ->withArgs(fn (Event $event) => $event->genreId === 4 && $event->genreName === 'Eletrônico')
+            ->andReturnUsing(fn (Event $event) => $event);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $genres = Mockery::mock(GenreRepository::class);
+        $genres->shouldReceive('findNameById')->once()->with(4)->andReturn('Eletrônico');
+
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $genres);
+
+        $event = $useCase->execute(
+            createdByType: EventCreatedByType::VenueAdmin,
+            organizer: $venue,
+            title: 'Noite Eletrônica',
+            description: 'Uma noite incrível',
+            startsAt: new DateTimeImmutable('+1 week'),
+            city: City::Vitoria,
+            genreId: 4,
+            isFree: true,
+        );
+
+        $this->assertSame('Eletrônico', $event->genreName);
     }
 
     public function test_GIVEN_a_venue_organizer_with_no_address_WHEN_creating_an_event_THEN_it_defaults_to_the_venues_registered_address(): void
@@ -63,7 +104,7 @@ class CreateEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -89,7 +130,7 @@ class CreateEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('O endereço é obrigatório.');
@@ -119,7 +160,7 @@ class CreateEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::Promoter,
@@ -157,7 +198,7 @@ class CreateEventTest extends TestCase
         $fileUpload->shouldNotReceive('upload');
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Sua conta ainda não foi aprovada.');
@@ -196,7 +237,7 @@ class CreateEventTest extends TestCase
             ->andReturn('https://cdn.qor.com/events/covers/cover.jpg');
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -226,7 +267,7 @@ class CreateEventTest extends TestCase
         $fileUpload->shouldNotReceive('upload');
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -259,6 +300,7 @@ class CreateEventTest extends TestCase
                 startsAt: $event->startsAt,
                 city: $event->city,
                 genreId: $event->genreId,
+                genreName: $event->genreName,
                 isFree: $event->isFree,
                 address: $event->address,
             ));
@@ -269,7 +311,7 @@ class CreateEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(2)->andReturn($approvedPromoter);
         $promoters->shouldReceive('tagEvent')->once()->with(99, [2]);
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -305,7 +347,7 @@ class CreateEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(3)->andReturn($unapprovedPromoter);
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Promotor inválido ou não aprovado.');
@@ -339,6 +381,7 @@ class CreateEventTest extends TestCase
                 startsAt: $event->startsAt,
                 city: $event->city,
                 genreId: $event->genreId,
+                genreName: $event->genreName,
                 isFree: $event->isFree,
                 address: $event->address,
             ));
@@ -349,7 +392,7 @@ class CreateEventTest extends TestCase
         $promoters->shouldNotReceive('findById');
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
 
         $useCase->execute(
             createdByType: EventCreatedByType::Promoter,

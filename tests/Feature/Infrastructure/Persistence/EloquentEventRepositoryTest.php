@@ -149,6 +149,7 @@ class EloquentEventRepositoryTest extends TestCase
             startsAt: new \DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: $genreId,
+            genreName: 'Rock',
             isFree: true,
         );
 

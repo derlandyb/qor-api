@@ -14,8 +14,7 @@ final class DuplicateEvent
 {
     public function __construct(
         private readonly EventRepository $events,
-    ) {
-    }
+    ) {}
 
     public function execute(int $eventId, Venue|Promoter $organizer, DateTimeImmutable $startsAt): Event
     {
@@ -34,6 +33,7 @@ final class DuplicateEvent
             startsAt: $startsAt,
             city: $event->city,
             genreId: $event->genreId,
+            genreName: $event->genreName,
             isFree: $event->isFree,
             status: EventStatus::Draft,
             coverImageUrl: $event->coverImageUrl,

@@ -30,6 +30,7 @@ class GetEventDetailsTest extends TestCase
             startsAt: new DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: 1,
+            genreName: 'Rock',
             isFree: true,
             status: $status,
         );

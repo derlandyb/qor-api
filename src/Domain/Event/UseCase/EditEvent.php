@@ -10,6 +10,7 @@ use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\GenreRepository;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\DomainEventPublisher;
@@ -25,8 +26,8 @@ final class EditEvent
         private readonly FileUploadPort $fileUpload,
         private readonly PromoterRepository $promoters,
         private readonly DomainEventPublisher $domainEvents,
-    ) {
-    }
+        private readonly GenreRepository $genres,
+    ) {}
 
     /**
      * @param ?list<int> $promoterIds null = tagging untouched; array = full replace
@@ -64,6 +65,11 @@ final class EditEvent
         }
 
         if ($event->status === EventStatus::Draft) {
+            $newGenreId = $genreId ?? $event->genreId;
+            $newGenreName = $newGenreId === $event->genreId
+                ? $event->genreName
+                : $this->genres->findNameById($newGenreId);
+
             $updated = new Event(
                 id: $event->id,
                 createdByType: $event->createdByType,
@@ -72,7 +78,8 @@ final class EditEvent
                 description: $description ?? $event->description,
                 startsAt: $startsAt ?? $event->startsAt,
                 city: $city ?? $event->city,
-                genreId: $genreId ?? $event->genreId,
+                genreId: $newGenreId,
+                genreName: $newGenreName,
                 isFree: $isFree ?? $event->isFree,
                 status: EventStatus::Draft,
                 coverImageUrl: $coverImageUrl,
@@ -115,6 +122,7 @@ final class EditEvent
                 startsAt: $event->startsAt,
                 city: $event->city,
                 genreId: $event->genreId,
+                genreName: $event->genreName,
                 isFree: $event->isFree,
                 status: EventStatus::Published,
                 coverImageUrl: $coverImageUrl,

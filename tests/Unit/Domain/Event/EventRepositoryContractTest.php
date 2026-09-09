@@ -82,6 +82,7 @@ final class InMemoryEventRepository implements EventRepository
             startsAt: $event->startsAt,
             city: $event->city,
             genreId: $event->genreId,
+            genreName: $event->genreName,
             isFree: $event->isFree,
             status: $event->status,
             address: $event->address,
@@ -117,6 +118,7 @@ class EventRepositoryContractTest extends TestCase
             startsAt: new DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: 1,
+            genreName: 'Rock',
             isFree: true,
         );
     }
