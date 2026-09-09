@@ -32,6 +32,8 @@ final class GetSocialFeedTest extends TestCase
             startsAt: new DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: 1,
+            genreName: 'Rock',
+            address: 'Rua das Flores, 123',
             isFree: true,
         );
     }

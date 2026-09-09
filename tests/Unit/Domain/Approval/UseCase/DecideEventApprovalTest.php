@@ -43,6 +43,8 @@ class DecideEventApprovalTest extends TestCase
             startsAt: $startsAt,
             city: City::Vitoria,
             genreId: 2,
+            genreName: 'Samba',
+            address: 'Rua das Flores, 123',
             isFree: true,
             status: $status,
         );

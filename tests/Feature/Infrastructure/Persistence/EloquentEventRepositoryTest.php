@@ -88,6 +88,52 @@ class EloquentEventRepositoryTest extends TestCase
 
         $this->assertCount(1, $page->items);
         $this->assertSame($sambaId, $page->items[0]->genreId);
+        $this->assertSame('Samba', $page->items[0]->genreName);
+    }
+
+    public function test_GIVEN_a_persisted_event_WHEN_finding_by_id_THEN_the_genre_name_is_resolved_via_the_genre_relation(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Reggae', 'slug' => 'reggae', 'created_at' => now(), 'updated_at' => now()]);
+        $model = EventModel::factory()->create(['genre_id' => $genreId]);
+
+        $repository = new EloquentEventRepository();
+
+        $event = $repository->findById($model->id);
+
+        $this->assertNotNull($event);
+        $this->assertSame($genreId, $event->genreId);
+        $this->assertSame('Reggae', $event->genreName);
+    }
+
+    public function test_GIVEN_multiple_events_sharing_a_genre_WHEN_finding_by_ids_THEN_the_genre_is_resolved_in_a_constant_number_of_queries(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Funk', 'slug' => 'funk', 'created_at' => now(), 'updated_at' => now()]);
+        $models = EventModel::factory()->count(5)->create(['genre_id' => $genreId]);
+
+        $repository = new EloquentEventRepository();
+
+        DB::enableQueryLog();
+        $events = $repository->findByIds($models->pluck('id')->all());
+        $queryCountForFive = count(DB::getQueryLog());
+        DB::flushQueryLog();
+
+        $this->assertCount(5, $events);
+        foreach ($events as $event) {
+            $this->assertSame('Funk', $event->genreName);
+        }
+
+        $moreModels = EventModel::factory()->count(10)->create(['genre_id' => $genreId]);
+        DB::flushQueryLog();
+
+        $repository->findByIds(array_merge($models->pluck('id')->all(), $moreModels->pluck('id')->all()));
+        $queryCountForFifteen = count(DB::getQueryLog());
+        DB::flushQueryLog();
+
+        $this->assertSame(
+            $queryCountForFive,
+            $queryCountForFifteen,
+            'Genre resolution must be eager-loaded (constant query count), not N+1.'
+        );
     }
 
     public function test_GIVEN_a_new_domain_event_WHEN_saving_THEN_it_is_persisted_and_assigned_an_id(): void
@@ -103,6 +149,8 @@ class EloquentEventRepositoryTest extends TestCase
             startsAt: new \DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: $genreId,
+            genreName: 'Rock',
+            address: 'Rua das Flores, 123',
             isFree: true,
         );
 

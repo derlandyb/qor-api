@@ -19,6 +19,7 @@ class EloquentEventRepository implements EventRepository
         $pageSize = config('qor.pagination.public_page_size');
 
         $query = EventModel::query()
+            ->with('genre')
             ->where('status', EventStatus::Published->value)
             ->where('starts_at', '>=', now())
             ->orderBy('starts_at')
@@ -63,7 +64,7 @@ class EloquentEventRepository implements EventRepository
 
     public function findById(int $id): ?Event
     {
-        $model = EventModel::find($id);
+        $model = EventModel::with('genre')->find($id);
 
         return $model ? $this->toDomain($model) : null;
     }
@@ -74,14 +75,15 @@ class EloquentEventRepository implements EventRepository
             return [];
         }
 
-        $models = EventModel::whereIn('id', $ids)->get();
+        $models = EventModel::with('genre')->whereIn('id', $ids)->get();
 
         return array_values($models->map(fn (EventModel $model) => $this->toDomain($model))->all());
     }
 
     public function findByCreator(EventCreatedByType $createdByType, int $createdById): array
     {
-        $models = EventModel::where('created_by_type', $createdByType->value)
+        $models = EventModel::with('genre')
+            ->where('created_by_type', $createdByType->value)
             ->where('created_by_id', $createdById)
             ->orderByDesc('starts_at')
             ->get();
@@ -91,7 +93,8 @@ class EloquentEventRepository implements EventRepository
 
     public function findPublishedPastEnd(): array
     {
-        $models = EventModel::where('status', EventStatus::Published->value)
+        $models = EventModel::with('genre')
+            ->where('status', EventStatus::Published->value)
             ->where('starts_at', '<', now())
             ->get();
 
@@ -104,7 +107,8 @@ class EloquentEventRepository implements EventRepository
         // as an approximation of "became Published" (edits also bump it, which is an
         // acceptable minor over-inclusion at v1's single-region scale; a dedicated
         // column can be added later if this proves inaccurate in practice).
-        $models = EventModel::where('status', EventStatus::Published->value)
+        $models = EventModel::with('genre')
+            ->where('status', EventStatus::Published->value)
             ->where('city', $city->value)
             ->where('updated_at', '>=', $since)
             ->get();
@@ -136,6 +140,7 @@ class EloquentEventRepository implements EventRepository
         ]);
 
         $model->save();
+        $model->load('genre');
 
         return $this->toDomain($model);
     }
@@ -159,6 +164,7 @@ class EloquentEventRepository implements EventRepository
             genreId: $model->genre_id,
             isFree: $model->is_free,
             status: $model->status,
+            genreName: $model->genre->name,
             address: $model->address,
             ticketUrl: $model->ticket_url,
             capacity: $model->capacity,

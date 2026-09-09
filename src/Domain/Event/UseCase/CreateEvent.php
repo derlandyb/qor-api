@@ -8,6 +8,7 @@ use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\GenreRepository;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\Enum\City;
@@ -21,8 +22,8 @@ final class CreateEvent
         private readonly EventRepository $events,
         private readonly FileUploadPort $fileUpload,
         private readonly PromoterRepository $promoters,
-    ) {
-    }
+        private readonly GenreRepository $genres,
+    ) {}
 
     /**
      * @param list<int> $promoterIds
@@ -79,6 +80,7 @@ final class CreateEvent
             startsAt: $startsAt,
             city: $city,
             genreId: $genreId,
+            genreName: $this->genres->findNameById($genreId),
             isFree: $isFree,
             coverImageUrl: $coverImageUrl,
             address: $address,

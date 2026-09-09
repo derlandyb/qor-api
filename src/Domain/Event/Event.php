@@ -29,10 +29,18 @@ final class Event
         public readonly DateTimeImmutable $startsAt,
         public readonly City $city,
         public readonly int $genreId,
+        /**
+         * Denormalized genre display name. `genreId` remains the domain source of
+         * truth (ARCHITECTURE §14) — this is resolved via GenreRepository at every
+         * construction site (use cases resolve it explicitly; repository read paths
+         * resolve it via the eager-loaded `genres` relation) so it's never stale or
+         * missing on a real Event instance.
+         */
+        public readonly string $genreName,
+        public readonly string $address,
         public readonly bool $isFree,
         public readonly EventStatus $status = EventStatus::Draft,
         public readonly ?string $coverImageUrl = null,
-        public readonly ?string $address = null,
         public readonly ?string $ticketUrl = null,
         public readonly ?int $capacity = null,
         public readonly ?string $ageRating = null,
@@ -41,6 +49,10 @@ final class Event
     ) {
         if ($this->title === '') {
             throw new InvalidArgumentException('O título do evento não pode ser vazio.');
+        }
+
+        if ($this->address === '') {
+            throw new InvalidArgumentException('O endereço é obrigatório.');
         }
 
         if (! $this->isFree && $this->ticketUrl === null) {
@@ -74,6 +86,7 @@ final class Event
             genreId: $this->genreId,
             isFree: $this->isFree,
             status: $newStatus,
+            genreName: $this->genreName,
             address: $this->address,
             ticketUrl: $this->ticketUrl,
             capacity: $this->capacity,

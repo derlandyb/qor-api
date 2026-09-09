@@ -13,8 +13,12 @@ use QOR\App\Domain\Shared\Enum\City;
 
 class EventTest extends TestCase
 {
-    private function makeEvent(bool $isFree = true, ?string $ticketUrl = null): Event
-    {
+    private function makeEvent(
+        bool $isFree = true,
+        ?string $ticketUrl = null,
+        string $genreName = 'Rock',
+        string $address = 'Rua das Flores, 123',
+    ): Event {
         return new Event(
             id: 1,
             createdByType: EventCreatedByType::VenueAdmin,
@@ -25,9 +29,27 @@ class EventTest extends TestCase
             startsAt: new DateTimeImmutable('+1 week'),
             city: City::Vitoria,
             genreId: 1,
+            genreName: $genreName,
+            address: $address,
             isFree: $isFree,
             ticketUrl: $ticketUrl,
         );
+    }
+
+    public function test_GIVEN_a_genre_id_and_name_WHEN_constructing_THEN_both_are_stored(): void
+    {
+        $event = $this->makeEvent(genreName: 'Rock');
+
+        $this->assertSame(1, $event->genreId);
+        $this->assertSame('Rock', $event->genreName);
+    }
+
+    public function test_GIVEN_a_resolved_genre_name_WHEN_transitioning_THEN_the_genre_name_is_carried_over(): void
+    {
+        $event = $this->makeEvent(genreName: 'Rock')->transitionTo(EventStatus::PendingReview);
+
+        $this->assertSame(1, $event->genreId);
+        $this->assertSame('Rock', $event->genreName);
     }
 
     public function test_GIVEN_valid_fields_WHEN_constructing_THEN_entity_starts_as_draft(): void
@@ -42,6 +64,13 @@ class EventTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         $this->makeEvent(isFree: false, ticketUrl: null);
+    }
+
+    public function test_GIVEN_an_empty_address_WHEN_constructing_THEN_it_throws(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->makeEvent(address: '');
     }
 
     public function test_GIVEN_a_draft_event_WHEN_submitting_for_review_THEN_it_transitions_to_pending_review(): void

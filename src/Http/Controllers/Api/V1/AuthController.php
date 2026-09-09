@@ -36,8 +36,7 @@ class AuthController extends Controller
         private readonly EmailVerificationPort $emailVerification,
         private readonly OtpVerificationPort $otpVerification,
         private readonly UserRepository $users,
-    ) {
-    }
+    ) {}
 
     public function register(RegisterFanRequest $request): JsonResponse
     {
@@ -240,6 +239,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
+            'birthdate' => $user->birthdate->format('Y-m-d'),
             'profile_picture_url' => $user->profilePictureUrl,
             'email_verified' => $user->isVerified(),
         ];

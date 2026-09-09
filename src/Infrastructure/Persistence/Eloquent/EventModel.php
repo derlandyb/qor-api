@@ -5,6 +5,7 @@ namespace QOR\App\Infrastructure\Persistence\Eloquent;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Shared\Enum\City;
@@ -14,6 +15,7 @@ use QOR\App\Domain\Shared\Enum\City;
  * @property-read City $city
  * @property-read EventStatus $status
  * @property-read \Illuminate\Support\Carbon $starts_at
+ * @property-read GenreModel $genre
  */
 class EventModel extends Model
 {
@@ -64,5 +66,13 @@ class EventModel extends Model
     {
         return $this->belongsToMany(PromoterModel::class, 'event_promoter', 'event_id', 'promoter_id')
             ->withPivot('tagged_at');
+    }
+
+    /**
+     * @return BelongsTo<GenreModel, $this>
+     */
+    public function genre(): BelongsTo
+    {
+        return $this->belongsTo(GenreModel::class, 'genre_id');
     }
 }

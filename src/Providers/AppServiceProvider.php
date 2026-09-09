@@ -19,6 +19,7 @@ use QOR\App\Domain\Billing\SubscriptionRepository;
 use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\GenreRepository;
 use QOR\App\Domain\Notification\Enum\NotificationTriggerType;
 use QOR\App\Domain\Notification\NotificationDispatcher;
 use QOR\App\Domain\Notification\NotificationLogRepository;
@@ -56,6 +57,7 @@ use QOR\App\Infrastructure\Persistence\EloquentConsentRepository;
 use QOR\App\Infrastructure\Persistence\EloquentEventRepository;
 use QOR\App\Infrastructure\Persistence\EloquentFavoriteRepository;
 use QOR\App\Infrastructure\Persistence\EloquentFriendshipRepository;
+use QOR\App\Infrastructure\Persistence\EloquentGenreRepository;
 use QOR\App\Infrastructure\Persistence\EloquentNotificationLogRepository;
 use QOR\App\Infrastructure\Persistence\EloquentNotificationPreferenceRepository;
 use QOR\App\Infrastructure\Persistence\EloquentPlanRepository;
@@ -77,6 +79,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(EventRepository::class, EloquentEventRepository::class);
+        $this->app->bind(GenreRepository::class, EloquentGenreRepository::class);
         $this->app->bind(UserRepository::class, EloquentUserRepository::class);
         $this->app->bind(VenueRepository::class, EloquentVenueRepository::class);
         $this->app->bind(PromoterRepository::class, EloquentPromoterRepository::class);

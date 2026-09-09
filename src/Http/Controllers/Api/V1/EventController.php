@@ -80,6 +80,7 @@ class EventController extends Controller
             'starts_at' => $event->startsAt->format(DATE_ATOM),
             'city' => $event->city->value,
             'genre_id' => $event->genreId,
+            'genre' => $event->genreName,
             'address' => $event->address,
             'is_free' => $event->isFree,
             'ticket_url' => $event->ticketUrl,

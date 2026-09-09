@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('starts_at');
             $table->string('city');
             $table->foreignId('genre_id')->constrained('genres');
-            $table->string('address')->nullable();
+            $table->string('address');
             $table->boolean('is_free')->default(false);
             $table->string('ticket_url')->nullable();
             $table->unsignedInteger('capacity')->nullable();
