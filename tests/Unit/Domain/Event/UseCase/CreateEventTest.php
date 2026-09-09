@@ -8,10 +8,12 @@ use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
+use QOR\App\Domain\Event\Coordinates;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\GenreRepository;
+use QOR\App\Domain\Event\GeocodingPort;
 use QOR\App\Domain\Event\UseCase\CreateEvent;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
@@ -47,6 +49,14 @@ class CreateEventTest extends TestCase
         return $genres;
     }
 
+    private function geocoding(): GeocodingPort
+    {
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldReceive('geocode')->andReturn(null);
+
+        return $geocoding;
+    }
+
     private function approvedPromoter(): Promoter
     {
         return new Promoter(
@@ -75,7 +85,7 @@ class CreateEventTest extends TestCase
         $genres = Mockery::mock(GenreRepository::class);
         $genres->shouldReceive('findNameById')->once()->with(4)->andReturn('Eletrônico');
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $genres);
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $genres, $this->geocoding());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -104,7 +114,7 @@ class CreateEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -130,7 +140,7 @@ class CreateEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('O endereço é obrigatório.');
@@ -160,7 +170,7 @@ class CreateEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::Promoter,
@@ -198,7 +208,7 @@ class CreateEventTest extends TestCase
         $fileUpload->shouldNotReceive('upload');
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Sua conta ainda não foi aprovada.');
@@ -237,7 +247,7 @@ class CreateEventTest extends TestCase
             ->andReturn('https://cdn.qor.com/events/covers/cover.jpg');
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -267,7 +277,7 @@ class CreateEventTest extends TestCase
         $fileUpload->shouldNotReceive('upload');
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $event = $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -311,7 +321,7 @@ class CreateEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(2)->andReturn($approvedPromoter);
         $promoters->shouldReceive('tagEvent')->once()->with(99, [2]);
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $useCase->execute(
             createdByType: EventCreatedByType::VenueAdmin,
@@ -347,7 +357,7 @@ class CreateEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(3)->andReturn($unapprovedPromoter);
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Promotor inválido ou não aprovado.');
@@ -363,6 +373,75 @@ class CreateEventTest extends TestCase
             isFree: true,
             promoterIds: [3],
         );
+    }
+
+    public function test_GIVEN_a_resolvable_address_WHEN_creating_an_event_THEN_coordinates_are_persisted(): void
+    {
+        $venue = $this->approvedVenue();
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('save')
+            ->once()
+            ->withArgs(fn (Event $event) => $event->latitude === -20.3155 && $event->longitude === -40.3128)
+            ->andReturnUsing(fn (Event $event) => $event);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldReceive('geocode')
+            ->once()
+            ->with($venue->address)
+            ->andReturn(new Coordinates(-20.3155, -40.3128));
+
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $geocoding);
+
+        $event = $useCase->execute(
+            createdByType: EventCreatedByType::VenueAdmin,
+            organizer: $venue,
+            title: 'Noite Eletrônica',
+            description: 'Uma noite incrível',
+            startsAt: new DateTimeImmutable('+1 week'),
+            city: City::Vitoria,
+            genreId: 1,
+            isFree: true,
+        );
+
+        $this->assertSame(-20.3155, $event->latitude);
+        $this->assertSame(-40.3128, $event->longitude);
+    }
+
+    public function test_GIVEN_an_unresolvable_address_WHEN_creating_an_event_THEN_it_still_saves_with_null_coordinates(): void
+    {
+        $venue = $this->approvedVenue();
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('save')
+            ->once()
+            ->withArgs(fn (Event $event) => $event->latitude === null && $event->longitude === null)
+            ->andReturnUsing(fn (Event $event) => $event);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldReceive('geocode')->once()->andReturn(null);
+
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $geocoding);
+
+        $event = $useCase->execute(
+            createdByType: EventCreatedByType::VenueAdmin,
+            organizer: $venue,
+            title: 'Noite Eletrônica',
+            description: 'Uma noite incrível',
+            startsAt: new DateTimeImmutable('+1 week'),
+            city: City::Vitoria,
+            genreId: 1,
+            isFree: true,
+        );
+
+        $this->assertNull($event->latitude);
+        $this->assertNull($event->longitude);
     }
 
     public function test_GIVEN_a_promoter_organizer_WHEN_creating_an_event_with_promoter_ids_THEN_they_are_silently_ignored(): void
@@ -392,7 +471,7 @@ class CreateEventTest extends TestCase
         $promoters->shouldNotReceive('findById');
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres());
+        $useCase = new CreateEvent($repository, $fileUpload, $promoters, $this->genres(), $this->geocoding());
 
         $useCase->execute(
             createdByType: EventCreatedByType::Promoter,

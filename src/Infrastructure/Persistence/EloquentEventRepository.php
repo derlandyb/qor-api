@@ -3,16 +3,39 @@
 namespace QOR\App\Infrastructure\Persistence;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventPage;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\MapBounds;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
 
 class EloquentEventRepository implements EventRepository
 {
+    /**
+     * Fixed approximate center point (lat, lng) per City enum value — not
+     * admin-configurable, same "fixed set of 4" spirit as the City enum
+     * itself (ARCHITECTURE.md §14.1). Only `qor.map.city_radius_km` (the
+     * distance around these centers) is config-driven.
+     *
+     * @var array<string, array{0: float, 1: float}>
+     */
+    private const CITY_CENTERS = [
+        'vitoria' => [-20.3155, -40.3128],
+        'vila_velha' => [-20.3297, -40.2925],
+        'serra' => [-20.1289, -40.3078],
+        'cariacica' => [-20.2632, -40.4165],
+    ];
+
+    // Approximate km per degree of latitude, used to convert the configured
+    // city_radius_km into a bounding box around a city's center point —
+    // consistent with Approach A's plain-bounding-box query shape, no
+    // circular-radius SQL needed.
+    private const KM_PER_DEGREE_LATITUDE = 111.32;
+
     public function findUpcoming(?City $city, ?int $genreId, ?string $cursor): EventPage
     {
         /** @var int $pageSize */
@@ -116,6 +139,43 @@ class EloquentEventRepository implements EventRepository
         return array_values($models->map(fn (EventModel $model) => $this->toDomain($model))->all());
     }
 
+    public function findMapEvents(?MapBounds $bounds, ?City $city): array
+    {
+        if ($bounds === null && $city === null) {
+            throw new InvalidArgumentException('É necessário informar uma área (bounds) ou uma cidade.');
+        }
+
+        $effectiveBounds = $bounds ?? $this->boundsForCity($city);
+
+        $models = EventModel::with('genre')
+            ->where('status', EventStatus::Published->value)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->whereBetween('latitude', [$effectiveBounds->south, $effectiveBounds->north])
+            ->whereBetween('longitude', [$effectiveBounds->west, $effectiveBounds->east])
+            ->get();
+
+        return array_values($models->map(fn (EventModel $model) => $this->toDomain($model))->all());
+    }
+
+    private function boundsForCity(City $city): MapBounds
+    {
+        [$centerLatitude, $centerLongitude] = self::CITY_CENTERS[$city->value];
+
+        /** @var float $radiusKm */
+        $radiusKm = config('qor.map.city_radius_km');
+
+        $latitudeDelta = $radiusKm / self::KM_PER_DEGREE_LATITUDE;
+        $longitudeDelta = $radiusKm / (self::KM_PER_DEGREE_LATITUDE * cos(deg2rad($centerLatitude)));
+
+        return new MapBounds(
+            north: $centerLatitude + $latitudeDelta,
+            south: $centerLatitude - $latitudeDelta,
+            east: $centerLongitude + $longitudeDelta,
+            west: $centerLongitude - $longitudeDelta,
+        );
+    }
+
     public function save(Event $event): Event
     {
         $model = $event->id !== null ? EventModel::findOrFail($event->id) : new EventModel();
@@ -130,6 +190,8 @@ class EloquentEventRepository implements EventRepository
             'city' => $event->city->value,
             'genre_id' => $event->genreId,
             'address' => $event->address,
+            'latitude' => $event->latitude,
+            'longitude' => $event->longitude,
             'is_free' => $event->isFree,
             'ticket_url' => $event->ticketUrl,
             'capacity' => $event->capacity,
@@ -171,6 +233,8 @@ class EloquentEventRepository implements EventRepository
             ageRating: $model->age_rating,
             notes: $model->notes,
             rejectionFeedback: $model->rejection_feedback,
+            latitude: $model->latitude,
+            longitude: $model->longitude,
         );
     }
 

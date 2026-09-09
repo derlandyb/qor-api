@@ -7,16 +7,19 @@ use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventDetail;
 use QOR\App\Domain\Event\EventPage;
 use QOR\App\Domain\Event\UseCase\GetEventDetails;
+use QOR\App\Domain\Event\UseCase\GetMapEvents;
 use QOR\App\Domain\Event\UseCase\ListUpcomingEvents;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Http\Controllers\Controller;
 use QOR\App\Http\Requests\Api\V1\ListEventsRequest;
+use QOR\App\Http\Requests\Api\V1\MapEventsRequest;
 
 class EventController extends Controller
 {
     public function __construct(
         private readonly ListUpcomingEvents $listUpcomingEvents,
         private readonly GetEventDetails $getEventDetails,
+        private readonly GetMapEvents $getMapEvents,
     ) {
     }
 
@@ -29,6 +32,23 @@ class EventController extends Controller
         );
 
         return response()->json($this->pageToArray($page));
+    }
+
+    /**
+     * MAPGEO-03/T7: geocoded events within a bounding box or a city, for
+     * the Mapa Interativo screen. Public, no auth, same access pattern as
+     * index() above.
+     */
+    public function map(MapEventsRequest $request): JsonResponse
+    {
+        $events = $this->getMapEvents->execute(
+            bounds: $request->bounds(),
+            city: $request->city(),
+        );
+
+        return response()->json([
+            'data' => array_map(fn (Event $event) => $this->eventToArray($event), $events),
+        ]);
     }
 
     public function show(int $id): JsonResponse
@@ -82,6 +102,8 @@ class EventController extends Controller
             'genre_id' => $event->genreId,
             'genre' => $event->genreName,
             'address' => $event->address,
+            'latitude' => $event->latitude,
+            'longitude' => $event->longitude,
             'is_free' => $event->isFree,
             'ticket_url' => $event->ticketUrl,
             'capacity' => $event->capacity,

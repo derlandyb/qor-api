@@ -46,6 +46,13 @@ final class Event
         public readonly ?string $ageRating = null,
         public readonly ?string $notes = null,
         public readonly ?string $rejectionFeedback = null,
+        /**
+         * Geocoded from `address` (MAPGEO-01). Null when geocoding hasn't run
+         * yet or failed (MAPGEO-02) — a null-coordinate event simply doesn't
+         * appear on the map until re-geocoded, it's never a save-blocking error.
+         */
+        public readonly ?float $latitude = null,
+        public readonly ?float $longitude = null,
     ) {
         if ($this->title === '') {
             throw new InvalidArgumentException('O título do evento não pode ser vazio.');
@@ -93,6 +100,8 @@ final class Event
             ageRating: $this->ageRating,
             notes: $this->notes,
             rejectionFeedback: $newStatus === EventStatus::Draft ? $rejectionFeedback : null,
+            latitude: $this->latitude,
+            longitude: $this->longitude,
         );
     }
 }

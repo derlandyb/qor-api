@@ -11,6 +11,7 @@ use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\GenreRepository;
+use QOR\App\Domain\Event\GeocodingPort;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\DomainEventPublisher;
@@ -27,6 +28,7 @@ final class EditEvent
         private readonly PromoterRepository $promoters,
         private readonly DomainEventPublisher $domainEvents,
         private readonly GenreRepository $genres,
+        private readonly GeocodingPort $geocoding,
     ) {}
 
     /**
@@ -70,6 +72,20 @@ final class EditEvent
                 ? $event->genreName
                 : $this->genres->findNameById($newGenreId);
 
+            $newAddress = $address ?? $event->address;
+
+            // MAPGEO-01/02: only re-geocode when the address actually changed
+            // — an unchanged address keeps its existing (possibly still-null)
+            // coordinates, and a failed re-geocode never blocks the save.
+            $addressChanged = $address !== null && $address !== $event->address;
+            $newLatitude = $event->latitude;
+            $newLongitude = $event->longitude;
+            if ($addressChanged) {
+                $coordinates = $this->geocoding->geocode($newAddress);
+                $newLatitude = $coordinates?->latitude;
+                $newLongitude = $coordinates?->longitude;
+            }
+
             $updated = new Event(
                 id: $event->id,
                 createdByType: $event->createdByType,
@@ -83,12 +99,14 @@ final class EditEvent
                 isFree: $isFree ?? $event->isFree,
                 status: EventStatus::Draft,
                 coverImageUrl: $coverImageUrl,
-                address: $address ?? $event->address,
+                address: $newAddress,
                 ticketUrl: $ticketUrl ?? $event->ticketUrl,
                 capacity: $capacity ?? $event->capacity,
                 ageRating: $ageRating ?? $event->ageRating,
                 notes: $notes ?? $event->notes,
                 rejectionFeedback: $event->rejectionFeedback,
+                latitude: $newLatitude,
+                longitude: $newLongitude,
             );
 
             $savedEvent = $this->events->save($updated);
@@ -132,6 +150,8 @@ final class EditEvent
                 ageRating: $event->ageRating,
                 notes: $event->notes,
                 rejectionFeedback: $event->rejectionFeedback,
+                latitude: $event->latitude,
+                longitude: $event->longitude,
             );
 
             $savedEvent = $this->events->save($updated);

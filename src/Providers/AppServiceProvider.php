@@ -20,6 +20,7 @@ use QOR\App\Domain\Event\DomainEvent\EventCancelled;
 use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\GenreRepository;
+use QOR\App\Domain\Event\GeocodingPort;
 use QOR\App\Domain\Notification\Enum\NotificationTriggerType;
 use QOR\App\Domain\Notification\NotificationDispatcher;
 use QOR\App\Domain\Notification\NotificationLogRepository;
@@ -49,6 +50,7 @@ use QOR\App\Infrastructure\Auth\LaravelEmailVerificationAdapter;
 use QOR\App\Infrastructure\Auth\LaravelPasswordResetAdapter;
 use QOR\App\Infrastructure\Auth\OtpAdapter;
 use QOR\App\Infrastructure\Events\LaravelDomainEventPublisher;
+use QOR\App\Infrastructure\Geocoding\GoogleGeocodingAdapter;
 use QOR\App\Infrastructure\Notification\FcmPushSender;
 use QOR\App\Infrastructure\Notification\SesEmailSender;
 use QOR\App\Infrastructure\Persistence\EloquentAdminAccountRepository;
@@ -101,6 +103,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PasswordResetPort::class, LaravelPasswordResetAdapter::class);
         $this->app->bind(OtpVerificationPort::class, OtpAdapter::class);
         $this->app->bind(TransactionManager::class, LaravelTransactionManager::class);
+        $this->app->bind(GeocodingPort::class, GoogleGeocodingAdapter::class);
 
         $this->app->singleton(PasswordPolicy::class, function () {
             /** @var int $min */

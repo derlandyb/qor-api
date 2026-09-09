@@ -92,6 +92,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Geocoding (nightlife-gv-stitch-refresh — Mapa Interativo, MAPGEO-01/02)
+    |--------------------------------------------------------------------------
+    */
+    'geocoding' => [
+        'google' => [
+            'api_key' => env('QOR_GOOGLE_GEOCODING_API_KEY'),
+            'endpoint' => env('QOR_GOOGLE_GEOCODING_ENDPOINT', 'https://maps.googleapis.com/maps/api/geocode/json'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mapa Interativo (nightlife-gv-stitch-refresh — MAPGEO-03)
+    |--------------------------------------------------------------------------
+    */
+    'map' => [
+        // Radius around each City enum value's fixed center point, used by
+        // GET /events/map's "city" query mode as a convenience alternative
+        // to an explicit bounding box.
+        'city_radius_km' => (float) env('QOR_MAP_CITY_RADIUS_KM', 15),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media uploads (ARCHITECTURE.md §10)
     |--------------------------------------------------------------------------
     */

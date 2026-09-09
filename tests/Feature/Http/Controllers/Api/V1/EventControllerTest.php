@@ -88,4 +88,61 @@ class EventControllerTest extends TestCase
 
         $response->assertStatus(404)->assertExactJson(['message' => 'Recurso não encontrado.']);
     }
+
+    public function test_GIVEN_a_geocoded_published_event_inside_a_box_WHEN_querying_the_map_THEN_it_returns_with_coordinates(): void
+    {
+        EventModel::factory()->published()->create([
+            'latitude' => -20.3155,
+            'longitude' => -40.3128,
+        ]);
+
+        $response = $this->getJson('/api/v1/events/map?north=-20.0&south=-21.0&east=-40.0&west=-41.0');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.latitude', -20.3155)
+            ->assertJsonPath('data.0.longitude', -40.3128);
+    }
+
+    public function test_GIVEN_a_city_query_WHEN_querying_the_map_THEN_only_that_citys_geocoded_events_return(): void
+    {
+        EventModel::factory()->published()->create([
+            'city' => City::Vitoria->value,
+            'latitude' => -20.3155,
+            'longitude' => -40.3128,
+        ]);
+        EventModel::factory()->published()->create([
+            'city' => City::Serra->value,
+            'latitude' => -20.1289,
+            'longitude' => -40.3078,
+        ]);
+
+        $response = $this->getJson('/api/v1/events/map?city='.City::Vitoria->value);
+
+        $response->assertStatus(200)->assertJsonCount(1, 'data');
+    }
+
+    public function test_GIVEN_neither_a_box_nor_a_city_WHEN_querying_the_map_THEN_it_returns_422(): void
+    {
+        $response = $this->getJson('/api/v1/events/map');
+
+        $response->assertStatus(422)
+            ->assertJsonStructure(['message', 'errors']);
+    }
+
+    public function test_GIVEN_an_area_with_no_geocoded_events_WHEN_querying_the_map_THEN_it_returns_an_empty_array_not_an_error(): void
+    {
+        EventModel::factory()->published()->create(['latitude' => null, 'longitude' => null]);
+
+        $response = $this->getJson('/api/v1/events/map?north=-20.0&south=-21.0&east=-40.0&west=-41.0');
+
+        $response->assertStatus(200)->assertJsonCount(0, 'data');
+    }
+
+    public function test_GIVEN_the_map_route_is_called_WHEN_no_auth_token_is_present_THEN_it_still_succeeds(): void
+    {
+        $response = $this->getJson('/api/v1/events/map?city='.City::Vitoria->value);
+
+        $response->assertStatus(200);
+    }
 }
