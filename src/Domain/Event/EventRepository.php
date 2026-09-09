@@ -50,6 +50,17 @@ interface EventRepository
      */
     public function findRecentlyPublished(City $city, DateTimeImmutable $since): array;
 
+    /**
+     * Published events with resolved coordinates within $bounds, or (when
+     * $bounds is null) within `config('qor.map.city_radius_km')` of
+     * $city's fixed center point (MAPGEO-03). Exactly one of $bounds/$city
+     * must be non-null — callers (the Form Request in T7) already enforce
+     * this before reaching the repository.
+     *
+     * @return list<Event>
+     */
+    public function findMapEvents(?MapBounds $bounds, ?City $city): array;
+
     public function save(Event $event): Event;
 
     public function delete(int $id): void;

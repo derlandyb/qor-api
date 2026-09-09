@@ -8,6 +8,7 @@ use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventPage;
 use QOR\App\Domain\Event\EventRepository;
+use QOR\App\Domain\Event\MapBounds;
 use QOR\App\Domain\Shared\Enum\City;
 
 /**
@@ -68,6 +69,18 @@ final class InMemoryEventRepository implements EventRepository
         ));
     }
 
+    public function findMapEvents(?MapBounds $bounds, ?City $city): array
+    {
+        // Exercised against the real Postgres query shape by
+        // EloquentEventRepositoryTest — this fake has no coordinate/bounds
+        // concept to reimplement meaningfully.
+        return array_values(array_filter(
+            $this->events,
+            fn (Event $event) => $event->status === \QOR\App\Domain\Event\Enum\EventStatus::Published
+                && $event->latitude !== null && $event->longitude !== null,
+        ));
+    }
+
     public function save(Event $event): Event
     {
         $id = $event->id ?? $this->nextId++;
@@ -91,6 +104,8 @@ final class InMemoryEventRepository implements EventRepository
             ageRating: $event->ageRating,
             notes: $event->notes,
             rejectionFeedback: $event->rejectionFeedback,
+            latitude: $event->latitude,
+            longitude: $event->longitude,
         );
 
         $this->events[$id] = $saved;

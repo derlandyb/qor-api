@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
+use QOR\App\Domain\Event\MapBounds;
 use QOR\App\Domain\Shared\Enum\City;
 use QOR\App\Infrastructure\Persistence\Eloquent\EventModel;
 use QOR\App\Infrastructure\Persistence\EloquentEventRepository;
@@ -253,5 +254,91 @@ class EloquentEventRepositoryTest extends TestCase
 
         $this->assertCount(1, $events);
         $this->assertSame($pastPublished->id, $events[0]->id);
+    }
+
+    public function test_GIVEN_events_inside_and_outside_a_bounding_box_WHEN_finding_map_events_THEN_only_the_inside_ones_return(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        $inside = EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'latitude' => -20.3155,
+            'longitude' => -40.3128,
+        ]);
+        EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'latitude' => -3.7172,
+            'longitude' => -38.5433,
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $bounds = new MapBounds(north: -20.0, south: -21.0, east: -40.0, west: -41.0);
+        $events = $repository->findMapEvents($bounds, null);
+
+        $this->assertCount(1, $events);
+        $this->assertSame($inside->id, $events[0]->id);
+    }
+
+    public function test_GIVEN_a_city_mode_query_WHEN_finding_map_events_THEN_only_that_citys_geocoded_events_return(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        $inVitoria = EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'city' => City::Vitoria->value,
+            'latitude' => -20.3155,
+            'longitude' => -40.3128,
+        ]);
+        EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'city' => City::Serra->value,
+            'latitude' => -20.1289,
+            'longitude' => -40.3078,
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $events = $repository->findMapEvents(null, City::Vitoria);
+
+        $this->assertCount(1, $events);
+        $this->assertSame($inVitoria->id, $events[0]->id);
+    }
+
+    public function test_GIVEN_an_event_with_null_coordinates_inside_the_box_WHEN_finding_map_events_THEN_it_is_excluded(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        EventModel::factory()->published()->create([
+            'genre_id' => $genreId,
+            'latitude' => null,
+            'longitude' => null,
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $bounds = new MapBounds(north: 90.0, south: -90.0, east: 180.0, west: -180.0);
+        $events = $repository->findMapEvents($bounds, null);
+
+        $this->assertCount(0, $events);
+    }
+
+    public function test_GIVEN_a_draft_event_with_coordinates_inside_the_box_WHEN_finding_map_events_THEN_it_is_excluded(): void
+    {
+        $genreId = DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]);
+
+        EventModel::factory()->create([
+            'genre_id' => $genreId,
+            'status' => EventStatus::Draft->value,
+            'latitude' => -20.3155,
+            'longitude' => -40.3128,
+        ]);
+
+        $repository = new EloquentEventRepository();
+
+        $bounds = new MapBounds(north: -20.0, south: -21.0, east: -40.0, west: -41.0);
+        $events = $repository->findMapEvents($bounds, null);
+
+        $this->assertCount(0, $events);
     }
 }

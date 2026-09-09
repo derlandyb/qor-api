@@ -104,6 +104,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mapa Interativo (nightlife-gv-stitch-refresh — MAPGEO-03)
+    |--------------------------------------------------------------------------
+    */
+    'map' => [
+        // Radius around each City enum value's fixed center point, used by
+        // GET /events/map's "city" query mode as a convenience alternative
+        // to an explicit bounding box.
+        'city_radius_km' => (float) env('QOR_MAP_CITY_RADIUS_KM', 15),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Media uploads (ARCHITECTURE.md §10)
     |--------------------------------------------------------------------------
     */
