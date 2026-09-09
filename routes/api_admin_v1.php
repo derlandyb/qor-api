@@ -16,6 +16,7 @@ use QOR\App\Http\Controllers\Api\AdminV1\AdminAuthController;
 use QOR\App\Http\Controllers\Api\AdminV1\DashboardController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventApprovalController;
 use QOR\App\Http\Controllers\Api\AdminV1\EventController;
+use QOR\App\Http\Controllers\Api\AdminV1\GenreController;
 use QOR\App\Http\Controllers\Api\AdminV1\PlanController;
 use QOR\App\Http\Controllers\Api\AdminV1\PromoterController;
 use QOR\App\Http\Controllers\Api\AdminV1\SubscriptionController;
@@ -63,4 +64,16 @@ Route::prefix('plans')->middleware(['auth:admin', 'guard.admin', 'guard.super-ad
     Route::post('/', [PlanController::class, 'store']);
     Route::patch('/{id}', [PlanController::class, 'update'])->whereNumber('id');
     Route::post('/{id}/deactivate', [PlanController::class, 'deactivate'])->whereNumber('id');
+});
+
+// index is reachable by any admin-guard account (not just super_admin) — venue
+// admins/promoters need it to populate the event-creation genre picker; the
+// mutation routes stay Super Admin-only, same split approvals/plans use.
+Route::get('/genres', [GenreController::class, 'index'])->middleware(['auth:admin', 'guard.admin']);
+
+Route::prefix('genres')->middleware(['auth:admin', 'guard.admin', 'guard.super-admin'])->group(function () {
+    Route::post('/', [GenreController::class, 'store']);
+    Route::patch('/{id}', [GenreController::class, 'update'])->whereNumber('id');
+    Route::post('/{id}/activate', [GenreController::class, 'activate'])->whereNumber('id');
+    Route::post('/{id}/deactivate', [GenreController::class, 'deactivate'])->whereNumber('id');
 });

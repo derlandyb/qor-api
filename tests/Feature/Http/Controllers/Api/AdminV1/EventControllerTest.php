@@ -72,6 +72,17 @@ class EventControllerTest extends TestCase
         ]);
     }
 
+    private function inactiveGenreId(): int
+    {
+        return DB::table('genres')->insertGetId([
+            'name' => 'Descontinuado',
+            'slug' => 'descontinuado',
+            'is_active' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     private function validPayload(array $overrides = []): array
     {
         return array_merge([
@@ -124,6 +135,34 @@ class EventControllerTest extends TestCase
         $response = $this->postJson('/api/admin/v1/events', $this->validPayload());
 
         $response->assertStatus(422);
+    }
+
+    public function test_GIVEN_a_deactivated_genre_WHEN_creating_an_event_THEN_it_returns_422(): void
+    {
+        $this->actingAsVenueAdmin();
+
+        $response = $this->postJson('/api/admin/v1/events', $this->validPayload([
+            'genre_id' => $this->inactiveGenreId(),
+        ]));
+
+        $response->assertStatus(422)->assertJsonStructure(['message', 'errors' => ['genre_id']]);
+    }
+
+    public function test_GIVEN_a_deactivated_genre_WHEN_editing_an_event_THEN_it_returns_422(): void
+    {
+        $venue = $this->actingAsVenueAdmin();
+        $event = EventModel::factory()->create([
+            'created_by_type' => 'venue_admin',
+            'created_by_id' => $venue->id,
+            'genre_id' => $this->genreId(),
+            'status' => 'draft',
+        ]);
+
+        $response = $this->patchJson("/api/admin/v1/events/{$event->id}", [
+            'genre_id' => $this->inactiveGenreId(),
+        ]);
+
+        $response->assertStatus(422)->assertJsonStructure(['message', 'errors' => ['genre_id']]);
     }
 
     public function test_GIVEN_a_cover_image_WHEN_creating_an_event_THEN_it_persists_the_stored_url(): void

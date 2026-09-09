@@ -26,7 +26,7 @@ class GenreSeeder extends Seeder
         foreach ($genres as $name) {
             DB::table('genres')->updateOrInsert(
                 ['slug' => Str::slug($name)],
-                ['name' => $name, 'updated_at' => now(), 'created_at' => now()],
+                ['name' => $name, 'is_active' => true, 'updated_at' => now(), 'created_at' => now()],
             );
         }
     }

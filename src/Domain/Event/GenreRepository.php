@@ -11,4 +11,13 @@ interface GenreRepository
      * about the storage detail behind it.
      */
     public function findNameById(int $id): string;
+
+    public function findById(int $id): ?Genre;
+
+    /**
+     * @return list<Genre>
+     */
+    public function findAll(): array;
+
+    public function save(Genre $genre): Genre;
 }

@@ -27,7 +27,7 @@ class EditEventRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'starts_at' => ['nullable', 'date'],
             'city' => ['nullable', Rule::enum(City::class)],
-            'genre_id' => ['nullable', 'integer', 'exists:genres,id'],
+            'genre_id' => ['nullable', 'integer', Rule::exists('genres', 'id')->where('is_active', true)],
             'is_free' => ['nullable', 'boolean'],
             'address' => ['filled', 'string', 'max:500'],
             'ticket_url' => ['nullable', 'url'],
