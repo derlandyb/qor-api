@@ -107,6 +107,7 @@ final class DetectRegionalPublishesTest extends TestCase
             city: City::Vitoria,
             genreId: 1,
             genreName: 'Rock',
+            address: 'Rua das Flores, 123',
             isFree: true,
         );
     }

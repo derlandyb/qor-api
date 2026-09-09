@@ -47,6 +47,7 @@ class DuplicateEventTest extends TestCase
             city: City::Vitoria,
             genreId: 2,
             genreName: 'Samba',
+            address: 'Rua das Flores, 123',
             isFree: true,
             status: $status,
             rejectionFeedback: 'Feedback anterior.',
@@ -80,6 +81,7 @@ class DuplicateEventTest extends TestCase
                 city: $e->city,
                 genreId: $e->genreId,
                 genreName: $e->genreName,
+                address: $e->address,
                 isFree: $e->isFree,
                 status: $e->status,
             ));

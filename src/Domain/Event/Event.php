@@ -37,10 +37,10 @@ final class Event
          * missing on a real Event instance.
          */
         public readonly string $genreName,
+        public readonly string $address,
         public readonly bool $isFree,
         public readonly EventStatus $status = EventStatus::Draft,
         public readonly ?string $coverImageUrl = null,
-        public readonly ?string $address = null,
         public readonly ?string $ticketUrl = null,
         public readonly ?int $capacity = null,
         public readonly ?string $ageRating = null,
@@ -49,6 +49,10 @@ final class Event
     ) {
         if ($this->title === '') {
             throw new InvalidArgumentException('O título do evento não pode ser vazio.');
+        }
+
+        if ($this->address === '') {
+            throw new InvalidArgumentException('O endereço é obrigatório.');
         }
 
         if (! $this->isFree && $this->ticketUrl === null) {

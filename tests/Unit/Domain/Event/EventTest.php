@@ -13,8 +13,12 @@ use QOR\App\Domain\Shared\Enum\City;
 
 class EventTest extends TestCase
 {
-    private function makeEvent(bool $isFree = true, ?string $ticketUrl = null, string $genreName = 'Rock'): Event
-    {
+    private function makeEvent(
+        bool $isFree = true,
+        ?string $ticketUrl = null,
+        string $genreName = 'Rock',
+        string $address = 'Rua das Flores, 123',
+    ): Event {
         return new Event(
             id: 1,
             createdByType: EventCreatedByType::VenueAdmin,
@@ -26,6 +30,7 @@ class EventTest extends TestCase
             city: City::Vitoria,
             genreId: 1,
             genreName: $genreName,
+            address: $address,
             isFree: $isFree,
             ticketUrl: $ticketUrl,
         );
@@ -59,6 +64,13 @@ class EventTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         $this->makeEvent(isFree: false, ticketUrl: null);
+    }
+
+    public function test_GIVEN_an_empty_address_WHEN_constructing_THEN_it_throws(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->makeEvent(address: '');
     }
 
     public function test_GIVEN_a_draft_event_WHEN_submitting_for_review_THEN_it_transitions_to_pending_review(): void

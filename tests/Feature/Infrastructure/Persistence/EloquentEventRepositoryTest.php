@@ -150,6 +150,7 @@ class EloquentEventRepositoryTest extends TestCase
             city: City::Vitoria,
             genreId: $genreId,
             genreName: 'Rock',
+            address: 'Rua das Flores, 123',
             isFree: true,
         );
 

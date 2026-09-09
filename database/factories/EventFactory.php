@@ -34,6 +34,7 @@ class EventFactory extends Factory
             'city' => $city->value,
             'genre_id' => fn () => DB::table('genres')->inRandomOrder()->value('id')
                 ?? DB::table('genres')->insertGetId(['name' => 'Rock', 'slug' => 'rock', 'created_at' => now(), 'updated_at' => now()]),
+            'address' => fake()->address(),
             'is_free' => $isFree,
             'ticket_url' => $isFree ? null : fake()->url(),
             'status' => EventStatus::Draft->value,
