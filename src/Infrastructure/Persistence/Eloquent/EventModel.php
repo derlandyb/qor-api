@@ -34,6 +34,8 @@ class EventModel extends Model
         'city',
         'genre_id',
         'address',
+        'latitude',
+        'longitude',
         'is_free',
         'ticket_url',
         'capacity',
@@ -51,6 +53,8 @@ class EventModel extends Model
             'status' => EventStatus::class,
             'starts_at' => 'datetime',
             'is_free' => 'boolean',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 

@@ -46,7 +46,13 @@ class GoogleGeocodingAdapter implements GeocodingPort
                 return null;
             }
 
-            $location = $body['results'][0]['geometry']['location'] ?? null;
+            /** @var mixed $results */
+            $results = $body['results'] ?? null;
+            /** @var mixed $firstResult */
+            $firstResult = is_array($results) ? ($results[0] ?? null) : null;
+            /** @var mixed $geometry */
+            $geometry = is_array($firstResult) ? ($firstResult['geometry'] ?? null) : null;
+            $location = is_array($geometry) ? ($geometry['location'] ?? null) : null;
 
             if (! is_array($location) || ! isset($location['lat'], $location['lng'])) {
                 Log::error('Falha ao geocodificar endereço: resposta da Google Geocoding API sem coordenadas.', [

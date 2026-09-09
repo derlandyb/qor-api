@@ -10,10 +10,12 @@ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 use QOR\App\Domain\Approval\Enum\ApprovalStatus;
 use QOR\App\Domain\Event\Enum\EventCreatedByType;
+use QOR\App\Domain\Event\Coordinates;
 use QOR\App\Domain\Event\Enum\EventStatus;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\GenreRepository;
+use QOR\App\Domain\Event\GeocodingPort;
 use QOR\App\Domain\Event\UseCase\EditEvent;
 use QOR\App\Domain\Event\DomainEvent\EventChanged;
 use QOR\App\Domain\Promoter\Promoter;
@@ -46,6 +48,14 @@ class EditEventTest extends TestCase
         $genres->shouldReceive('findNameById')->andReturn('Rock');
 
         return $genres;
+    }
+
+    private function geocoding(): GeocodingPort
+    {
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldReceive('geocode')->andReturn(null);
+
+        return $geocoding;
     }
 
     private function approvedVenue(int $id = 1): Venue
@@ -99,7 +109,7 @@ class EditEventTest extends TestCase
         $genres = Mockery::mock(GenreRepository::class);
         $genres->shouldReceive('findNameById')->once()->with(5)->andReturn('Reggae');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $genres);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $genres, $this->geocoding());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue, genreId: 5);
 
@@ -121,7 +131,7 @@ class EditEventTest extends TestCase
         $genres = Mockery::mock(GenreRepository::class);
         $genres->shouldNotReceive('findNameById');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $genres);
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $genres, $this->geocoding());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
 
@@ -143,7 +153,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
 
@@ -165,7 +175,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $result = $useCase->execute(eventId: 1, organizer: $venue, description: 'Nova descrição.');
 
@@ -184,7 +194,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Apenas descrição e imagem podem ser editados após a publicação.');
@@ -204,7 +214,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -223,7 +233,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Este evento não pode ser editado no status atual.');
@@ -242,7 +252,7 @@ class EditEventTest extends TestCase
         $fileUpload = Mockery::mock(FileUploadPort::class);
 
         $promoters = Mockery::mock(PromoterRepository::class);
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $this->expectException(InvalidArgumentException::class);
 
@@ -277,7 +287,7 @@ class EditEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(2)->andReturn($approvedPromoter);
         $promoters->shouldReceive('tagEvent')->once()->with(1, [2]);
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $useCase->execute(eventId: 1, organizer: $venue, promoterIds: [2]);
     }
@@ -298,7 +308,7 @@ class EditEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(2)->andReturn($approvedPromoter);
         $promoters->shouldReceive('tagEvent')->once()->with(1, [2]);
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $useCase->execute(eventId: 1, organizer: $venue, promoterIds: [2]);
     }
@@ -326,7 +336,7 @@ class EditEventTest extends TestCase
         $promoters->shouldReceive('findById')->once()->with(3)->andReturn($unapprovedPromoter);
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Promotor inválido ou não aprovado.');
@@ -351,7 +361,7 @@ class EditEventTest extends TestCase
             ->once()
             ->with(Mockery::on(fn (EventChanged $e) => $e->eventId === 1));
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents, $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents, $this->genres(), $this->geocoding());
 
         $useCase->execute(eventId: 1, organizer: $venue, description: 'Nova descrição.');
     }
@@ -371,7 +381,7 @@ class EditEventTest extends TestCase
         $domainEvents = Mockery::mock(DomainEventPublisher::class);
         $domainEvents->shouldNotReceive('publish');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents, $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents, $this->genres(), $this->geocoding());
 
         $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
     }
@@ -391,7 +401,7 @@ class EditEventTest extends TestCase
         $domainEvents = Mockery::mock(DomainEventPublisher::class);
         $domainEvents->shouldNotReceive('publish');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents, $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $domainEvents, $this->genres(), $this->geocoding());
 
         // Same description as the persisted event — no material change.
         $useCase->execute(eventId: 1, organizer: $venue, description: 'Descrição original.');
@@ -412,8 +422,104 @@ class EditEventTest extends TestCase
         $promoters->shouldNotReceive('findById');
         $promoters->shouldNotReceive('tagEvent');
 
-        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres());
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $this->geocoding());
 
         $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
+    }
+
+    public function test_GIVEN_a_changed_address_WHEN_editing_a_draft_event_THEN_it_is_re_geocoded_and_persisted(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = $this->makeEvent(EventStatus::Draft, createdById: 1);
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')
+            ->once()
+            ->with(Mockery::on(fn (Event $e) => $e->latitude === -20.3155 && $e->longitude === -40.3128))
+            ->andReturnUsing(fn (Event $e) => $e);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldReceive('geocode')
+            ->once()
+            ->with('Praia de Camburi')
+            ->andReturn(new Coordinates(-20.3155, -40.3128));
+
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $geocoding);
+
+        $result = $useCase->execute(eventId: 1, organizer: $venue, address: 'Praia de Camburi');
+
+        $this->assertSame(-20.3155, $result->latitude);
+        $this->assertSame(-40.3128, $result->longitude);
+    }
+
+    public function test_GIVEN_an_unresolvable_new_address_WHEN_editing_a_draft_event_THEN_it_still_saves_with_null_coordinates(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = $this->makeEvent(EventStatus::Draft, createdById: 1);
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')
+            ->once()
+            ->with(Mockery::on(fn (Event $e) => $e->latitude === null && $e->longitude === null))
+            ->andReturnUsing(fn (Event $e) => $e);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldReceive('geocode')->once()->andReturn(null);
+
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $geocoding);
+
+        $result = $useCase->execute(eventId: 1, organizer: $venue, address: 'endereço inexistente');
+
+        $this->assertNull($result->latitude);
+        $this->assertNull($result->longitude);
+    }
+
+    public function test_GIVEN_the_address_is_unchanged_WHEN_editing_a_draft_event_THEN_it_is_not_re_geocoded_and_existing_coordinates_are_kept(): void
+    {
+        $venue = $this->approvedVenue();
+        $event = new Event(
+            id: 1,
+            createdByType: EventCreatedByType::VenueAdmin,
+            createdById: 1,
+            title: 'Show da Banda X',
+            description: 'Descrição original.',
+            startsAt: new DateTimeImmutable('+1 week'),
+            city: City::Vitoria,
+            genreId: 2,
+            genreName: 'Samba',
+            address: 'Rua das Flores, 123',
+            isFree: true,
+            status: EventStatus::Draft,
+            latitude: -20.3155,
+            longitude: -40.3128,
+        );
+
+        $repository = Mockery::mock(EventRepository::class);
+        $repository->shouldReceive('findById')->once()->with(1)->andReturn($event);
+        $repository->shouldReceive('save')
+            ->once()
+            ->with(Mockery::on(fn (Event $e) => $e->latitude === -20.3155 && $e->longitude === -40.3128))
+            ->andReturnUsing(fn (Event $e) => $e);
+
+        $fileUpload = Mockery::mock(FileUploadPort::class);
+        $promoters = Mockery::mock(PromoterRepository::class);
+
+        $geocoding = Mockery::mock(GeocodingPort::class);
+        $geocoding->shouldNotReceive('geocode');
+
+        $useCase = new EditEvent($repository, $fileUpload, $promoters, $this->domainEvents(), $this->genres(), $geocoding);
+
+        $result = $useCase->execute(eventId: 1, organizer: $venue, title: 'Novo Título');
+
+        $this->assertSame(-20.3155, $result->latitude);
+        $this->assertSame(-40.3128, $result->longitude);
     }
 }

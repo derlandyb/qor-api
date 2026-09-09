@@ -130,6 +130,8 @@ class EloquentEventRepository implements EventRepository
             'city' => $event->city->value,
             'genre_id' => $event->genreId,
             'address' => $event->address,
+            'latitude' => $event->latitude,
+            'longitude' => $event->longitude,
             'is_free' => $event->isFree,
             'ticket_url' => $event->ticketUrl,
             'capacity' => $event->capacity,
@@ -171,6 +173,8 @@ class EloquentEventRepository implements EventRepository
             ageRating: $model->age_rating,
             notes: $model->notes,
             rejectionFeedback: $model->rejection_feedback,
+            latitude: $model->latitude,
+            longitude: $model->longitude,
         );
     }
 

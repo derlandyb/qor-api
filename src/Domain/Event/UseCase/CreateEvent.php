@@ -9,6 +9,7 @@ use QOR\App\Domain\Event\Enum\EventCreatedByType;
 use QOR\App\Domain\Event\Event;
 use QOR\App\Domain\Event\EventRepository;
 use QOR\App\Domain\Event\GenreRepository;
+use QOR\App\Domain\Event\GeocodingPort;
 use QOR\App\Domain\Promoter\Promoter;
 use QOR\App\Domain\Promoter\PromoterRepository;
 use QOR\App\Domain\Shared\Enum\City;
@@ -23,6 +24,7 @@ final class CreateEvent
         private readonly FileUploadPort $fileUpload,
         private readonly PromoterRepository $promoters,
         private readonly GenreRepository $genres,
+        private readonly GeocodingPort $geocoding,
     ) {}
 
     /**
@@ -71,6 +73,11 @@ final class CreateEvent
             $this->assertPromotersApproved($promoterIds);
         }
 
+        // MAPGEO-01/02: geocoding failure never blocks event creation —
+        // GeocodingPort::geocode() already returns null (not a throw) on
+        // any failure, so the event simply saves with null coordinates.
+        $coordinates = $this->geocoding->geocode($address);
+
         $event = new Event(
             id: null,
             createdByType: $createdByType,
@@ -88,6 +95,8 @@ final class CreateEvent
             capacity: $capacity,
             ageRating: $ageRating,
             notes: $notes,
+            latitude: $coordinates?->latitude,
+            longitude: $coordinates?->longitude,
         );
 
         $savedEvent = $this->events->save($event);
